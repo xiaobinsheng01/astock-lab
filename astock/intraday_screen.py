@@ -10,14 +10,11 @@ This does not score, does not change the path, and does not place an order.
 from __future__ import annotations
 
 import json
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from sector_drive import (  # noqa: E402
+from astock.paths import HOLDERS_CACHE
+from astock.sector_drive import (
     COMPLEX_WORDS,
     INDUSTRIES,
     STATE_WORDS,
@@ -30,7 +27,7 @@ from sector_drive import (  # noqa: E402
 )
 
 RULE = "holder-v1"
-CACHE = Path(__file__).resolve().parents[1] / "cache" / "holders.json"
+CACHE = HOLDERS_CACHE
 SH_PREFIX = {"000001", "000016", "000300", "000688", "000852", "000685", "000807", "000993", "000941"}
 
 

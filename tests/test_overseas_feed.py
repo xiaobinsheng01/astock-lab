@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from overseas_feed import classify, items_from_html
+from astock.overseas_feed import classify, items_from_html
 
 FIXTURE = """
 <a href="https://www.news.cn/world/20261104/a58541d091da468eb33bce05b5cdb32e/c.html">美民主党连获关键州席位</a>

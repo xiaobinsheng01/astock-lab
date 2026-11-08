@@ -1,31 +1,58 @@
 # astock-lab
 
-A股分析 skill 的维护仓库。规则、脚本和分层说明在这里改，不放进 claw-code。
+A 股行情分析交易台。尺子、算盘、当日底稿、会话钟分开，仓库根目录就能看完，不把项目塞进 `.cursor/skills/`。
 
-用 Cursor 打开本仓库即可。skill 在 `.cursor/skills/a-share-analysis/`，对话里按这个目录加载。
+权重数字仍以 Canvas 为准。本仓库不复制一份会漂的分数表。计算器只印数，不下单，不接证券账户。
 
-## 分层
+## 四样东西
 
-`SKILL.md` 只做调度。正文按层打开，未点名的层不读进对话。脚本仍按该轮要求算完。
+| 位置 | 是什么 | 谁改 |
+| --- | --- | --- |
+| `rules/` | 尺子。资料、规则、账户、判定、执行、产出六层 | 改判断只改对应层 |
+| `astock/` | 算盘。行情、涨停、股东、新闻列表。标准库，无第三方依赖 | 改取数和分类 |
+| `runtime/` | 当日底稿。`info-ledger.md`、`cache/holders.json` | 跑起来才写，不进 git |
+| `desk.md` | 会话钟。这一轮读哪一层、跑哪条命令、写成五行还是六行 | 改时点，不改权重 |
+
+下层没齐，上层停写。任何模式先读 `rules/02-rules.md` 的「硬门」。
+
+## 六层
 
 | 层 | 文件 | 内容 |
 | --- | --- | --- |
-| 1 资料 | `references/01-data.md` | 渠道、时点、资料面增量、外围 |
-| 2 规则 | `references/02-rules.md` | 大盘四态、W6、板块状态、缠论、硬门 |
-| 3 账户 | `references/03-account.md` | 行为分状态、持仓、前十大两格 |
-| 4 判定 | `references/04-judgment.md` | 路径、对冲、托住、发力、今日关注 |
-| 5 执行 | `references/05-execution.md` | 终分、初分、盘中、定时 |
-| 6 产出 | `references/06-output.md` | 收盘五行或盘中六行 |
+| 1 资料 | `rules/01-data.md` | 渠道、时点、资料面增量、外围 |
+| 2 规则 | `rules/02-rules.md` | 大盘四态、W6、板块状态、缠论、硬门 |
+| 3 账户 | `rules/03-account.md` | 行为分状态、持仓、前十大两格 |
+| 4 判定 | `rules/04-judgment.md` | 路径、对冲、托住、发力、今日关注 |
+| 5 执行 | `rules/05-execution.md` | 终分、初分、盘中、定时 |
+| 6 产出 | `rules/06-output.md` | 收盘五行或盘中六行 |
 
-改规则时改对应层，不要把六层再写回一份 `SKILL.md`。权重数字仍以 Canvas 为准，不在调度文件里改。
+## 命令
 
-## 脚本
-
-路径保持 `.cursor/skills/a-share-analysis/scripts/`，与 skill 正文里的命令一致。
+在仓库根目录执行。
 
 ```bash
-cd .cursor/skills/a-share-analysis/scripts
-python3 -m unittest test_overseas_feed.py test_intraday_read.py
+python -m astock
+python -m astock.close_inputs
+python -m astock.close_inputs --fast
+python -m astock.info_diff
+python -m astock.intraday_brief --low 3590.80 --high 3686.17
+python -m astock.intraday_screen
+python -m astock.sector_drive
+python -m astock.overseas_feed
+python -m astock.us_sectors
 ```
 
-这两项不访问网络。`info-ledger.md` 和 `cache/` 是运行时记录，不进 git。
+短名与上面的模块一一对应：`close`、`news`、`brief`、`screen`、`drive`、`overseas`、`us`。例如 `python -m astock close --fast`。
+
+离线核对：
+
+```bash
+python -m unittest tests.test_overseas_feed tests.test_intraday_read
+python -m astock.close_inputs --self-check
+python -m astock.sector_drive --self-check
+python -m astock.us_sectors --self-check
+```
+
+## 对话
+
+用 Cursor 打开本仓库时，`.cursor/skills/a-share-analysis/SKILL.md` 只把分析对话指到根目录的 `desk.md`。规则不要写回 skill。

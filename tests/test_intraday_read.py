@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import unittest
 
-from info_diff import article_fact, classify_link, links_from_html, pack
-from intraday_brief import pair, path_text, segment
-from intraday_screen import assign, both_averages, judge_holders
+from astock.info_diff import article_fact, classify_link, links_from_html, pack
+from astock.intraday_brief import pair, path_text, segment
+from astock.intraday_screen import assign, both_averages, judge_holders
 
 
 def _holder(name: str, change: str = "", ratio=1.0) -> dict:

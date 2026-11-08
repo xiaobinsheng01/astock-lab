@@ -1,4 +1,5 @@
 __pycache__/
 *.pyc
-.cursor/skills/a-share-analysis/info-ledger.md
-.cursor/skills/a-share-analysis/cache/
+runtime/info-ledger.md
+runtime/cache/*
+!runtime/cache/.gitkeep
