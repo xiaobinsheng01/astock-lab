@@ -2,8 +2,9 @@
 """One quote batch for the written path and the written sector groups.
 
 Prints the Shanghai segment and whether bank and electronics point opposite ways.
-Does not screen constituents, does not read the ledger, does not score, and does
-not place an order.
+Holding lines are quotes only. Share counts and sell zones stay in the latest
+close note. Does not screen constituents, does not read the ledger, does not
+score, and does not place an order.
 """
 
 from __future__ import annotations
@@ -28,13 +29,13 @@ BASKET = (
 )
 
 HELD = (
-    ("002081", "金螳螂", 4.12, 4.30),
-    ("601061", "中信金属", 9.08, 9.61),
-    ("600127", "金健米业", 9.60, 10.64),
-    ("601868", "中国能建", 2.30, 2.35),
-    ("000559", "万向钱潮", 11.79, 12.70),
-    ("000725", "京东方A", 4.35, 4.66),
-    ("600330", "天通股份", 14.74, 16.96),
+    "002081",
+    "601061",
+    "600127",
+    "601868",
+    "000559",
+    "000725",
+    "600330",
 )
 SH_PREFIX = {"000001", "000016", "000300", "000688", "000852", "000685", "000807", "000993", "000941"}
 
@@ -103,7 +104,7 @@ def main() -> int:
     parser.add_argument("--a50-gap", action="store_true")
     args = parser.parse_args()
     basket = live_quotes(list(BASKET))
-    held = live_quotes([code for code, *_ in HELD])
+    held = live_quotes(list(HELD))
     sh = basket.get("000001") or {}
     px, high, low = sh.get("px"), sh.get("high"), sh.get("low")
     bank = (basket.get("399986") or {}).get("pct")
@@ -116,16 +117,10 @@ def main() -> int:
     for code in ("399986", "399811", "000685", "000993", "399389", "000688", "399006", "000852", "000807", "399998"):
         row = basket.get(code) or {}
         print(f"{code} {row.get('name')} {row.get('px')} {row.get('pct')} 高 {row.get('high')} 低 {row.get('low')}")
-    print("持仓")
-    for code, _name, hard_low, hard_high in HELD:
+    print("持仓报价")
+    for code in HELD:
         row = held.get(code) or {}
-        place = ""
-        if row.get("px") is not None:
-            place = segment(row["px"], hard_low, hard_high)
-        crossed = ""
-        if row.get("high") is not None and row["high"] > hard_high:
-            crossed = f" 高点越过{hard_high}"
-        print(f"{code} {row.get('name')} {row.get('px')} {row.get('pct')} 高 {row.get('high')} 低 {row.get('low')} {place}{crossed}")
+        print(f"{code} {row.get('name')} {row.get('px')} {row.get('pct')} 高 {row.get('high')} 低 {row.get('low')}")
     return 0
 
 
