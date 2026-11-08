@@ -12,7 +12,9 @@ import json
 import re
 import sys
 import urllib.request
-from pathlib import Path
+
+from astock.overseas_feed import collect
+from astock.paths import LEDGER
 
 LINK_RE = re.compile(r"""<a[^>]+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)</a>""", re.I)
 URL_RE = re.compile(r"https?://[^\s|）<>\"']+")
@@ -185,8 +187,7 @@ def _cursor(ledger: str) -> str:
 
 
 def main() -> int:
-    ledger_path = Path(__file__).resolve().parents[1] / "info-ledger.md"
-    ledger = ledger_path.read_text(encoding="utf-8") if ledger_path.exists() else ""
+    ledger = LEDGER.read_text(encoding="utf-8") if LEDGER.exists() else ""
     cursor = _cursor(ledger)
     rows: list[dict] = []
     mounts = []
@@ -199,9 +200,6 @@ def main() -> int:
         rows.extend(links_from_html(html, base, ledger, source, cursor=cursor))
     overseas = []
     try:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        from overseas_feed import collect
-
         for item in collect(8):
             url = item.get("url") or ""
             if item.get("kind") == "unmounted":

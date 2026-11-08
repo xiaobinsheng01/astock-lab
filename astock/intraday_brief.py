@@ -9,13 +9,9 @@ not place an order.
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from close_inputs import favored_path  # noqa: E402
-from sector_drive import _fetch, _num  # noqa: E402
+from astock.close_inputs import favored_path
+from astock.sector_drive import _fetch, _num
 
 BASKET = (
     "000001",
