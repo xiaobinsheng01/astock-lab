@@ -13,6 +13,7 @@ import re
 import sys
 import urllib.request
 
+from astock.direction import direction_lines
 from astock.overseas_feed import collect
 from astock.paths import LEDGER
 
@@ -173,6 +174,7 @@ def attach_facts(rows: list[dict]) -> None:
             row["fetch"] = type(exc).__name__
             continue
         row["fact"] = article_fact(html)
+        row["direction"] = direction_lines(row["fact"])
 
 
 def _fetch(url: str, timeout: int = 12) -> str:

@@ -17,6 +17,7 @@ COMMANDS = {
     "drive": "astock.sector_drive",
     "overseas": "astock.overseas_feed",
     "us": "astock.us_sectors",
+    "direction": "astock.direction",
 }
 
 
@@ -32,6 +33,7 @@ def _usage() -> str:
         "  drive     发力板块和发力个股             python -m astock.sector_drive",
         "  overseas  外围市场资讯候选               python -m astock.overseas_feed",
         "  us        美股行业 ETF 冷热              python -m astock.us_sectors",
+        "  direction  资料面方向句                   python -m astock.direction",
     ]
     return "\n".join(lines)
 

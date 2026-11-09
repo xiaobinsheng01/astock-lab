@@ -13,7 +13,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 EXCESS_PP = 1.0
-CAP_YI = 800.0
+CAP_YI = 600.0
 NEAR = 0.03
 MAX_NAMES = 10
 MAIN_PREFIXES = ("600", "601", "603", "605", "000", "001", "002", "003")
@@ -601,7 +601,7 @@ def self_check() -> int:
     ))
     check("missing stays unchecked", drive_sectors("upper_half_up", {}, 2.16)[0]["state"] == "unchecked")
     check("main board", main_board("002371") and main_board("600330") and not main_board("300750") and not main_board("688981"))
-    check("cap", cap_ok(799.99) == "pass" and cap_ok(800) == "fail" and cap_ok(None) == "unchecked")
+    check("cap", cap_ok(599.99) == "pass" and cap_ok(600) == "fail" and cap_ok(None) == "unchecked")
     closes = [10] * 9 + [10.2]
     near = near_ma(closes)
     check("near either line", near["state"] == "pass" and near["dist5"] <= NEAR)
