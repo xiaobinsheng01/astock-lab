@@ -48,7 +48,7 @@
 
 | 用户要的 | 读 | 跑 |
 | --- | --- | --- |
-| 预判、接下来的走势、板块波动、大盘分析、截图上的异动 | 「硬门」；`04-judgment.md` 的「全天走势」「发力板块」「发力个股」「对冲与托住」「修复日」「三类决策」「个股四条路径」；`01-data.md` 的「当轮使用」 | `python -m astock.info_diff`，`python -m astock.intraday_brief`，`python -m astock.intraday_screen`。brief 的低点、高点和三个开关按当日事实取舍 |
+| 预判、接下来的走势、板块波动、大盘分析、截图上的异动 | 「硬门」；`04-judgment.md` 的「全天走势」「发力板块」「发力个股」「对冲与托住」「修复日」「三类决策」「个股四条路径」；`01-data.md` 的「当轮使用」 | `python -m astock.info_diff`，`python -m astock.intraday_brief`，`python -m astock.etf_volume`，`python -m astock.intraday_screen`。brief 的低点、高点和三个开关按当日事实取舍。ETF 放量写在四条路径之后、板块异动之前 |
 | 盘中分析，交易日 10:00、12:50、14:00 | 上一行这些节，再加 `05-execution.md` 的「盘中分析」、`03-account.md` 的「持仓结构」 | 同上。W1–W5 只在有新的官方数字时按「当轮使用」改那一格，这是计分时点，不是少算路径和个股 |
 | 个股分析，发力个股，或点名一只非持仓 | 「硬门」；`04-judgment.md` 的「发力个股」「个股四条路径」；`03-account.md` 的「持仓结构」 | `python -m astock.sector_drive`。六项门槛全部算。答复按 `names` 里的全部过线名字写。用户点名的那一只和已提供持仓另写四条路径 |
 | 个股行情 | `05-execution.md` 的「个股行情」 | 不跑筛选脚本，除非用户同时要判断 |
