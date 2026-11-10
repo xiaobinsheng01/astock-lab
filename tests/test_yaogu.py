@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from astock.yaogu import SEED, classify, orders_allowed, shape_of, top5
+from astock.yaogu import SEED, classify, orders_allowed, shape_of, tail_queue, top5
 
 
 def row(**overrides):
@@ -55,6 +55,18 @@ class TierTest(unittest.TestCase):
         blocked = classify(row(code="002081", name="金螳螂"))
         self.assertEqual(blocked["tier"], "池外")
 
+    def test_shrink_t_is_watch_only(self) -> None:
+        shrink = classify(row(
+            open=4.19, high=4.19, low=4.00, close=4.19, volume=50, prev_volume=100,
+        ))
+        self.assertEqual(shrink["shape"], "T字")
+        self.assertEqual(shrink["tier"], "只看")
+        heavy = classify(row(
+            open=4.19, high=4.19, low=4.00, close=4.19, volume=150, prev_volume=100,
+        ))
+        self.assertEqual(heavy["tier"], "观察")
+        self.assertEqual(top5([shrink, heavy]), [])
+
 
 class Top5Test(unittest.TestCase):
     def test_order_and_no_watch_fill(self) -> None:
@@ -77,6 +89,22 @@ class Top5Test(unittest.TestCase):
     def test_seed_size(self) -> None:
         self.assertEqual(len(SEED), 23)
         self.assertEqual(len({row["code"] for row in SEED}), 23)
+
+
+class TailQueueTest(unittest.TestCase):
+    def test_buffer_blocks_a_late_spike(self) -> None:
+        allowed = tail_queue(row(volume_1455=80, last5_volume=10))
+        self.assertTrue(allowed["queue"])
+        self.assertTrue(allowed["fill_stands"])
+        blocked = tail_queue(row(volume_1455=100, last5_volume=40))
+        self.assertFalse(blocked["queue"])
+        self.assertAlmostEqual(blocked["buffered_vr"], 1.4)
+        self.assertFalse(tail_queue(row(volume_1455=80))["queue"])
+
+    def test_full_day_ratio_does_not_revoke_a_fill(self) -> None:
+        decision = tail_queue(row(volume=180, volume_1455=80, last5_volume=10))
+        self.assertTrue(decision["fill_stands"])
+        self.assertGreaterEqual(180 / 100, 1.3)
 
 
 class WindowTest(unittest.TestCase):
