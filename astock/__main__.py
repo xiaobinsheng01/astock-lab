@@ -17,6 +17,15 @@ COMMANDS = {
     "drive": "astock.sector_drive",
     "overseas": "astock.overseas_feed",
     "us": "astock.us_sectors",
+    "yaogu": "astock.yaogu",
+    "route": "astock.route",
+    "lake": "astock.lake",
+    "sentence": "astock.sentence",
+    "a50": "astock.a50",
+    "cctv": "astock.cctv_feed",
+    "cfbond": "astock.cfbond_feed",
+    "cninfo": "astock.cninfo_feed",
+    "cash": "astock.cash_close",
 }
 
 
@@ -32,6 +41,15 @@ def _usage() -> str:
         "  drive     发力板块和发力个股             python -m astock.sector_drive",
         "  overseas  外围市场资讯候选               python -m astock.overseas_feed",
         "  us        美股行业 ETF 冷热              python -m astock.us_sectors",
+        "  yaogu     妖股分类和盘前五只             python -m astock.yaogu",
+        "  route     这一轮哪个窗口、读什么、跑什么  python -m astock route",
+        "  lake      热层和归档                     python -m astock lake",
+        "  sentence  事实一句的数字校验             python -m astock sentence",
+        "  a50       富时中国 A50 两个价             python -m astock a50",
+        "  cctv      央视财经栏目                   python -m astock cctv",
+        "  cfbond    中国财富网要闻                 python -m astock cfbond",
+        "  cninfo    巨潮公告                       python -m astock cninfo",
+        "  cash      9:00 现金价                    python -m astock cash",
     ]
     return "\n".join(lines)
 
