@@ -251,25 +251,79 @@ def round_fen(value: float) -> float:
     return int(value * 100 + 0.5 + 1e-6) / 100.0
 
 
+BARE_PCT = 0.002
+
+
+def cross_span(price: float | None, level: float | None) -> str:
+    """none, touch, bare, or clear. Bare is above the level by less than 0.20%."""
+    if price is None or level is None or level <= 0:
+        return "none"
+    excess = (price - level) / level
+    if excess < 0:
+        return "none"
+    if excess == 0:
+        return "touch"
+    if excess < BARE_PCT:
+        return "bare"
+    return "clear"
+
+
 def favored_path(
     prior_high: float,
     session_high: float | None,
     prev_close_above_older_high: bool,
-    w3_negative: bool,
-    a50_gap: bool,
+    w3_negative: bool = False,
+    a50_gap: bool = False,
+    prev_close: float | None = None,
+    older_high: float | None = None,
+    check_price: float | None = None,
 ) -> str:
-    """Choose the favored path. Does not move the narrow ceiling or the W3 sign.
+    """Choose the path. A bare cross can return to the narrow band at the check.
 
-    A session high above the prior high wins. Touching that high does not.
-    This does not score W1–W8 and does not emit an order.
+    A clear cross stays above the prior high. Touching that high does not switch.
+    The W3 sign and an A50 gap do not choose the path. This does not score and
+    does not emit an order.
     """
-    if session_high is not None and session_high > prior_high:
+    del w3_negative, a50_gap
+    session = cross_span(session_high, prior_high)
+    pre = cross_span(prev_close, older_high)
+    if pre == "none" and prev_close_above_older_high:
+        pre = "clear"
+    kind = session if session in {"bare", "clear"} else pre
+    if kind == "clear":
         return "above_prior_high"
-    if prev_close_above_older_high:
-        return "above_prior_high"
-    if w3_negative and a50_gap:
-        return "narrow_lower"
+    if kind == "bare":
+        if check_price is not None and check_price < prior_high:
+            return "narrow_lower"
+        return "just_over_prior_high"
     return "not_forced"
+
+
+def w3_score(nasdaq_pct: float | None, spx_pct: float | None) -> int | None:
+    """Overseas-tech cell from cash closes, in percent points.
+
+    Nasdaq sets the side. The S&P must not be on the opposite side of zero.
+    A missing close leaves the cell unchanged.
+    """
+    if nasdaq_pct is None or spx_pct is None:
+        return None
+    if nasdaq_pct >= 2 and spx_pct >= 0:
+        return 2
+    if nasdaq_pct <= -2 and spx_pct <= 0:
+        return -2
+    if nasdaq_pct >= 0.5 and spx_pct >= 0:
+        return 1
+    if nasdaq_pct <= -0.5 and spx_pct <= 0:
+        return -1
+    return 0
+
+
+def emotion_split(dims: dict) -> bool:
+    """Premium and height positive, with at least two of the other three negative."""
+    if dims.get("premium", 0) <= 0 or dims.get("height", 0) <= 0:
+        return False
+    weak = sum(1 for key in ("breadth", "limit", "volume") if dims.get(key, 0) < 0)
+    return weak >= 2
 
 
 def first_day_follow_through(
@@ -929,11 +983,11 @@ def self_check() -> int:
     else:
         print("ok missing height stays unchecked")
     morning = favored_path(3624.58, 3605.39, False, True, True)
-    if morning != "narrow_lower":
+    if morning != "not_forced":
         print(f"FAIL nov4 morning path: {morning}")
         failed += 1
     else:
-        print("ok nov4 morning stays narrow")
+        print("ok a negative W3 does not force the narrow path")
     broken = favored_path(3624.58, 3686.17, False, True, True)
     if broken != "above_prior_high":
         print(f"FAIL breakout path: {broken}")
@@ -947,11 +1001,36 @@ def self_check() -> int:
     else:
         print("ok nov5 premarket stays above the prior high")
     touched = favored_path(3624.58, 3624.58, False, True, True)
-    if touched != "narrow_lower":
+    if touched != "not_forced":
         print(f"FAIL touch does not switch: {touched}")
         failed += 1
     else:
         print("ok touching the prior high does not switch")
+    bare = favored_path(3679.09, None, False, prev_close=3660.79, older_high=3660.49)
+    if bare != "just_over_prior_high":
+        print(f"FAIL bare cross: {bare}")
+        failed += 1
+    else:
+        print("ok a 0.30 point cross stays bare")
+    failed_check = favored_path(
+        3679.09, None, False, prev_close=3660.79, older_high=3660.49, check_price=3670
+    )
+    if failed_check != "narrow_lower":
+        print(f"FAIL bare check: {failed_check}")
+        failed += 1
+    else:
+        print("ok 10:30 back under the prior high leaves the bare path")
+    if w3_score(2.74, 2.35) != 2 or w3_score(None, 2.35) is not None or w3_score(-0.4, -0.2) != 0:
+        print("FAIL w3 scale")
+        failed += 1
+    else:
+        print("ok w3 scale")
+    split = emotion_split({"premium": 2, "height": 2, "breadth": 0, "limit": -1, "volume": -1})
+    if not split or emotion_split({"premium": 2, "height": 2, "breadth": 1, "limit": 1, "volume": 1}):
+        print("FAIL emotion split")
+        failed += 1
+    else:
+        print("ok emotion split")
     band = four_paths(3590.80, 3686.17)
     if band["narrow_high"] != band["midpoint"] or band["narrow_high"] == band["hard_high"]:
         print(f"FAIL narrow ceiling: {band}")

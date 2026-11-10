@@ -61,7 +61,7 @@ INDUSTRIES = (
     },
 )
 BROAD_INDEXES = frozenset({"000001", "399001", "399006", "000688", "000852", "000300", "000016"})
-GROWTH_PATHS = frozenset({"above_prior_high", "upper_half_up"})
+GROWTH_PATHS = frozenset({"above_prior_high", "upper_half_up", "just_over_prior_high"})
 
 
 def _num(value):
@@ -333,6 +333,92 @@ def _line_key(gap) -> tuple:
     if gap <= 0:
         return (0, gap)
     return (1, gap)
+
+
+def observation_indexes(growth: str, communication_hot: bool, drive_indexes: set[str]) -> list[str]:
+    """US-hot sleeves that are not already on the drive list. No order."""
+    picked = []
+    if growth == "hot":
+        for code in ("000685", "399811"):
+            if code not in drive_indexes:
+                picked.append(code)
+    if communication_hot and "399389" not in drive_indexes:
+        picked.append("399389")
+    return picked
+
+
+FOCUS = (
+    ("600378", "昊华科技"),
+    ("600498", "烽火通信"),
+    ("600206", "有研新材"),
+    ("003031", "中瓷电子"),
+    ("002179", "中航光电"),
+)
+HARD_GATE = {"002081", "601061", "000559", "601868"}
+
+
+def failed_gates(row: dict) -> list[str]:
+    """Name the gates that kept a focus name off the pass list."""
+    failed = []
+    if row.get("main_board") is False:
+        failed.append("非主板")
+    cap = row.get("cap")
+    if cap == "fail":
+        failed.append("市值")
+    elif cap == "unchecked":
+        failed.append("市值未核")
+    near = row.get("near")
+    if near == "fail":
+        failed.append("均线")
+    elif near == "unchecked":
+        failed.append("均线未核")
+    holder = row.get("holder")
+    if holder == "complex":
+        failed.append("股权结构")
+    elif holder not in {None, "simple", "pass"}:
+        failed.append("股东未核")
+    earnings = row.get("earnings")
+    if earnings == "fail":
+        failed.append("业绩")
+    elif earnings not in {None, "pass"}:
+        failed.append("业绩未核")
+    return failed
+
+
+def row_action(row: dict, score: float) -> str:
+    """硬门, 核对, 观察, or 留档. Below 0.4 nothing becomes 核对."""
+    if row.get("code") in HARD_GATE or row.get("hard_gate"):
+        return "硬门"
+    pct = _num(row.get("pct"))
+    if pct is not None and pct < 0:
+        return "留档"
+    if score >= 0.4 and row.get("column") == "发力" and not failed_gates(row):
+        return "核对"
+    return "观察"
+
+
+def merge_watch(focus_rows: list[dict], passed_rows: list[dict], score: float) -> list[dict]:
+    """One table. A name that closed down stays on the table and leaves 观察."""
+    by_code = {row["code"]: dict(row) for row in focus_rows}
+    for row in passed_rows:
+        current = by_code.get(row["code"], {})
+        current.update(row)
+        current["column"] = current.get("column") or "发力"
+        by_code[row["code"]] = current
+    ordered = []
+    seen = set()
+    for code, _name in FOCUS:
+        if code in by_code:
+            ordered.append(by_code[code])
+            seen.add(code)
+    for row in passed_rows:
+        if row["code"] not in seen:
+            ordered.append(by_code[row["code"]])
+            seen.add(row["code"])
+    for row in ordered:
+        row["failed"] = failed_gates(row)
+        row["action"] = row_action(row, score)
+    return ordered
 
 
 def recommend(rows: list[dict], held: set[str]) -> dict:
@@ -686,6 +772,16 @@ def self_check() -> int:
         [row["code"] for row in picked["names"]] == ["600004", "600005", "600002", "600001"],
     )
     check("held aside", [row["code"] for row in picked["held_aside"]] == ["002081"])
+    observed = observation_indexes("hot", True, {"399389"})
+    check("observation skips communication already driving", observed == ["000685", "399811"])
+    merged = merge_watch(
+        [{"code": "600498", "name": "烽火通信", "column": "发力", "near": "fail", "holder": "simple", "earnings": "pass", "cap": "pass", "pct": 6.78}],
+        [{"code": "002148", "name": "北纬科技", "column": "发力", "near": "pass", "holder": "simple", "earnings": "pass", "cap": "pass", "pct": -1.02}],
+        -0.08,
+    )
+    by_code = {row["code"]: row for row in merged}
+    check("a failed gate stays on the table", by_code["600498"]["failed"] == ["均线"] and by_code["600498"]["action"] == "观察")
+    check("a down close leaves observation", by_code["002148"]["action"] == "留档")
     return failed
 
 

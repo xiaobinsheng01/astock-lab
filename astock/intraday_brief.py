@@ -64,10 +64,30 @@ def pair(bank, electronics) -> str:
     return "相反"
 
 
-def path_text(prior_high: float, session_high, above_older: bool, w3_negative: bool, a50_gap: bool) -> str:
-    kind = favored_path(prior_high, session_high, above_older, w3_negative, a50_gap)
+def path_text(
+    prior_high: float,
+    session_high,
+    above_older: bool,
+    w3_negative: bool,
+    a50_gap: bool,
+    prev_close: float | None = None,
+    older_high: float | None = None,
+    check_price: float | None = None,
+) -> str:
+    kind = favored_path(
+        prior_high,
+        session_high,
+        above_older,
+        w3_negative,
+        a50_gap,
+        prev_close=prev_close,
+        older_high=older_high,
+        check_price=check_price,
+    )
     if kind == "above_prior_high":
         return f"收在{prior_high:.2f}之上"
+    if kind == "just_over_prior_high":
+        return f"刚过前高，10:30回到{prior_high:.2f}以下改看窄区间"
     if kind == "narrow_lower":
         return "窄区间"
     return "未改主路径"
@@ -101,6 +121,9 @@ def main() -> int:
     parser.add_argument("--prev-close-above-older", action="store_true")
     parser.add_argument("--w3-negative", action="store_true")
     parser.add_argument("--a50-gap", action="store_true")
+    parser.add_argument("--prev-close", type=float)
+    parser.add_argument("--older-high", type=float)
+    parser.add_argument("--check-price", type=float)
     args = parser.parse_args()
     basket = live_quotes(list(BASKET))
     held = live_quotes([code for code, *_ in HELD])
@@ -111,7 +134,19 @@ def main() -> int:
     print(f"上证 {px} 涨跌 {sh.get('pct')} 高 {high} 低 {low} 开 {sh.get('open')} 时点 {sh.get('ts')}")
     if px is not None:
         print(f"落点 {segment(px, args.low, args.high)} 中点 {(args.low + args.high) / 2:.2f}")
-    print(f"主路径 {path_text(args.high, high, args.prev_close_above_older, args.w3_negative, args.a50_gap)}")
+    print(
+        "主路径 "
+        + path_text(
+            args.high,
+            high,
+            args.prev_close_above_older,
+            args.w3_negative,
+            args.a50_gap,
+            prev_close=args.prev_close,
+            older_high=args.older_high,
+            check_price=args.check_price,
+        )
+    )
     print(f"银行与电子 {pair(bank, elec)}")
     for code in ("399986", "399811", "000685", "000993", "399389", "000688", "399006", "000852", "000807", "399998"):
         row = basket.get(code) or {}

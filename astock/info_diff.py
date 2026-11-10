@@ -13,6 +13,7 @@ import re
 import sys
 import urllib.request
 
+from astock.event_card import event_destination
 from astock.overseas_feed import collect
 from astock.paths import LEDGER
 
@@ -128,6 +129,18 @@ def links_from_html(html: str, base: str, ledger: str, source: str, cursor: str 
     return rows
 
 
+def tag_destination(row: dict) -> dict:
+    """Attach the event-card destination. Does not change the score."""
+    text = row.get("fact") or row.get("title") or ""
+    row["destination"] = event_destination(
+        row.get("source") or "",
+        text,
+        row.get("status") or "",
+        bool(row.get("official_matched")),
+    )
+    return row
+
+
 def pack(rows: list[dict], open_limit: int | None = None) -> dict:
     """Keep every clocked new page. A limit is only for a caller that asks for one."""
     def newer(row: dict) -> str:
@@ -221,8 +234,16 @@ def main() -> int:
         cls_rows = telegraph_rows(fetch_telegraph(cursor), ledger, cursor)
     except Exception as exc:  # noqa: BLE001 — a dead wire is a mount note
         mounts.append({"source": "财联社电报", "url": "https://www.cls.cn/telegraph", "error": type(exc).__name__})
+    for row in rows:
+        tag_destination(row)
+    for row in cls_rows:
+        tag_destination(row)
     payload["cls"] = [row for row in cls_rows if row["status"] in {"原料", "转载", "缺口"}]
     payload["comment_skipped"] += sum(1 for row in cls_rows if row["status"] == "不进W1–W5")
+    for item in overseas:
+        if "news.cn" in (item.get("url") or ""):
+            item["source"] = "新华社"
+        tag_destination(item)
     payload["overseas_new"] = overseas
     payload["mounts"] = mounts
     payload["cursor"] = cursor
