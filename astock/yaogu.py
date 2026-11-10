@@ -27,6 +27,24 @@ BLOCKED = {
 }
 VR_OVERNIGHT = 1.3
 VR_VETO = 2.2
+# 2027-02-06 is the first day of the goat year. The character counts only in a limit-up name.
+ZODIAC = "羊"
+BROKEN_DOWN = 0.25
+# Corporate fillers. A shared pair of characters has to be outside this list to be a name cluster.
+NAME_STOP = frozenset({
+    "股份", "集团", "控股", "科技", "发展", "实业", "国际", "有限", "公司",
+    "投资", "产业", "中国", "电子", "能源", "信息", "网络", "智能", "生物",
+    "医药", "化工", "建设", "环保", "环境", "数据", "数字", "光电", "光学",
+})
+# Place names. A region counts only when two names share one and their industries differ.
+PLACES = (
+    "哈尔滨", "内蒙古", "石家庄",
+    "海南", "西藏", "新疆", "北京", "上海", "深圳", "广州", "成都", "重庆",
+    "天津", "宁波", "厦门", "青岛", "大连", "南京", "杭州", "武汉", "长沙",
+    "郑州", "西安", "沈阳", "长春", "昆明", "贵阳", "南宁", "兰州", "合肥",
+    "福州", "济南", "太原", "南昌", "珠海", "佛山", "苏州", "无锡", "西部",
+    "北方", "南方", "东北", "广西", "宁夏", "青海",
+)
 
 # 2026-11-09 close. A settlement cohort, not the daily monitor.
 SEED: tuple[dict[str, Any], ...] = (
@@ -117,6 +135,9 @@ def classify(row: dict[str, Any]) -> dict[str, Any]:
         "vr": None if vr is None else round(vr, 4),
         "first_close": first,
         "tier": "池外",
+        "hy": _industry(row),
+        "broken": bool(row.get("broken")),
+        "sector_pct": row.get("sector_pct"),
     }
     if code in BLOCKED or not _mainboard(code) or _blocked_name(name):
         return out
@@ -166,6 +187,127 @@ def tail_queue(row: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _grams(name: str) -> set[str]:
+    chars = [char for char in name if "\u4e00" <= char <= "\u9fff"]
+    found = set()
+    for index in range(len(chars) - 1):
+        gram = "".join(chars[index : index + 2])
+        if gram not in NAME_STOP and gram not in PLACES and gram != ZODIAC:
+            found.add(gram)
+    return found
+
+
+def _industry(row: dict[str, Any]) -> str:
+    return str(row.get("hy") or row.get("industry") or "")
+
+
+def _place_of(name: str) -> str:
+    found = [place for place in PLACES if place in name]
+    if not found:
+        return ""
+    return max(found, key=len)
+
+
+def _place_groups(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        place = _place_of(str(row.get("name") or ""))
+        if place:
+            groups.setdefault(place, []).append(row)
+    return groups
+
+
+def _industries_differ(group: list[dict[str, Any]]) -> bool:
+    names = [_industry(row) for row in group]
+    if any(not name for name in names):
+        return False
+    return len(set(names)) >= 2
+
+
+def element_view(
+    rows: list[dict[str, Any]],
+    prior: list[dict[str, Any]] | None = None,
+    official: list[dict[str, Any]] | None = None,
+    mood: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Tag name, zodiac, region, official text, and tape context.
+
+    Tags do not change a tier and do not change a queue decision.
+    """
+    clusters: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        for gram in _grams(str(row.get("name") or "")):
+            clusters.setdefault(gram, []).append(row)
+    cluster_lines = []
+    for gram in sorted(clusters):
+        uniq = {row.get("code"): row for row in clusters[gram]}
+        if len(uniq) < 2:
+            continue
+        cluster_lines.append("名称簇\t" + gram + "\t" + " ".join(str(row.get("name")) for row in uniq.values()))
+    if not cluster_lines:
+        cluster_lines.append("名称簇\t无")
+
+    zodiac_rows = [row for row in rows if ZODIAC in str(row.get("name") or "")]
+    zodiac_lines = ["生肖\t" + (" ".join(str(row.get("name")) for row in zodiac_rows) if zodiac_rows else "无")]
+    pointed = any(item.get("clock") and ZODIAC in str(item.get("text") or "") for item in official or [])
+    if pointed and not zodiac_rows:
+        zodiac_lines.append("生肖稿\t已点\t池中无票")
+
+    today = _place_groups(rows)
+    earlier = _place_groups(prior or [])
+    region_lines = []
+    for place in sorted(today):
+        group = today[place]
+        if len(group) < 2 or not _industries_differ(group):
+            continue
+        prior_group = earlier.get(place) or []
+        formed = len(prior_group) >= 2 and _industries_differ(prior_group)
+        state = "成簇" if formed else "当日"
+        region_lines.append(f"地域\t{place}\t{state}\t" + " ".join(str(row.get("name")) for row in group))
+    if not region_lines:
+        region_lines.append("地域\t无")
+
+    official_lines = []
+    for kind in ("文件", "会议", "数字"):
+        matched: list[str] = []
+        for item in official or []:
+            if item.get("kind") != kind or not item.get("clock"):
+                continue
+            codes = set(item.get("codes") or [])
+            industries = set(item.get("industries") or [])
+            words = [word for word in (item.get("words") or []) if word]
+            for row in rows:
+                industry = _industry(row)
+                name = str(row.get("name") or "")
+                if row.get("code") in codes or industry in industries or any(word in name for word in words):
+                    matched.append(name)
+        official_lines.append(kind + "\t" + (" ".join(dict.fromkeys(matched)) if matched else "无"))
+
+    if not mood:
+        mood_lines = ["情绪\t未核", "市场\t未核", "降档\t无"]
+    else:
+        mood_lines = ["情绪\t已核", "市场\t已核"]
+        sector = mood.get("sector_pct") or {}
+        ratio = mood.get("broken_ratio")
+        downs = []
+        for row in rows:
+            reasons = []
+            if row.get("broken") and ratio is not None and float(ratio) >= BROKEN_DOWN:
+                reasons.append("炸板")
+            industry = _industry(row)
+            pct = sector.get(industry) if industry else None
+            if pct is None and row.get("sector_pct") is not None:
+                pct = row.get("sector_pct")
+            if pct is not None and float(pct) < 0:
+                reasons.append("行业指数跌")
+            if reasons:
+                downs.append(f"降档\t{row.get('code')}\t{row.get('name')}\t{'+'.join(reasons)}")
+        mood_lines.extend(downs or ["降档\t无"])
+    return {
+        "lines": cluster_lines + zodiac_lines + region_lines + official_lines + mood_lines,
+    }
+
+
 def _attention_key(item: dict[str, Any]) -> tuple[int, float, str] | None:
     tier = item["tier"]
     board = item["board"]
@@ -206,7 +348,13 @@ def _vr_text(item: dict[str, Any]) -> str:
     return "缺" if item["vr"] is None else f"{item['vr']:.2f}"
 
 
-def format_report(day: str, rows: list[dict[str, Any]]) -> str:
+def format_report(
+    day: str,
+    rows: list[dict[str, Any]],
+    prior: list[dict[str, Any]] | None = None,
+    official: list[dict[str, Any]] | None = None,
+    mood: dict[str, Any] | None = None,
+) -> str:
     picked = top5(rows)
     watch = [row for row in rows if row.get("tier") == "只看"]
     watch.sort(key=lambda item: (999.0 if item["vr"] is None else float(item["vr"]), item["code"]))
@@ -225,6 +373,8 @@ def format_report(day: str, rows: list[dict[str, Any]]) -> str:
         lines.append(
             f"{item['code']}\t{item['name']}\t{item['board']}板\t{item['shape']}\t收盘{item['close']:.2f}\t量比{_vr_text(item)}"
         )
+    lines.append("元素")
+    lines.extend(element_view(rows, prior, official, mood)["lines"])
     return "\n".join(lines)
 
 
@@ -233,6 +383,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--monitor", action="store_true", help="打印 2026-11-09 初始监控")
     parser.add_argument("--day", default="", help="交易日 YYYY-MM-DD")
     parser.add_argument("--rows", default="", help="涨停收盘 JSON 列表")
+    parser.add_argument("--prior", default="", help="上一日涨停名单 JSON，用来核地域是否成簇")
+    parser.add_argument("--official", default="", help="带发布时间的文件、会议、数字 JSON")
+    parser.add_argument("--mood", default="", help="炸板率和行业指数涨跌 JSON")
     args = parser.parse_args(argv)
     if args.monitor:
         print(format_monitor())
@@ -240,8 +393,13 @@ def main(argv: list[str] | None = None) -> int:
     if not args.day or not args.rows:
         parser.error("分类需要 --day 和 --rows")
     payload = json.loads(sys.stdin.read() if args.rows == "-" else open(args.rows, encoding="utf-8").read())
+    def load(path: str):
+        if not path:
+            return None
+        return json.loads(open(path, encoding="utf-8").read())
+
     classified = [classify(row) for row in payload]
-    print(format_report(args.day, classified))
+    print(format_report(args.day, classified, load(args.prior), load(args.official), load(args.mood)))
     return 0
 
 
