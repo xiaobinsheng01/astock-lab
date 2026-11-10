@@ -85,7 +85,7 @@ def plan(at: str, ask: str) -> dict:
         row["窗口"] = "取数"
         row["轮次"] = "资料面"
         row["读"] = "热层写入位置"
-        row["跑"] = "news、close、drive、brief、screen、a50、cctv、cfbond、cninfo、cash"
+        row["跑"] = "info_diff、intraday_brief、intraday_screen、close_inputs、sector_drive、a50、cctv、cfbond、cninfo、cash"
         row["缺快照"] = "未挂"
         row["不打开"] = "五行、主仓重算、妖股分档"
         row["持仓"] = ""

@@ -40,9 +40,20 @@ class RouteTest(unittest.TestCase):
     def test_data_window_is_the_only_fetcher(self) -> None:
         row = plan("2026-11-10 15:15", "跑资料面")
         self.assertEqual(row["窗口"], "取数")
-        self.assertIn("news", row["跑"])
+        self.assertIn("info_diff", row["跑"])
+        self.assertIn("intraday_brief", row["跑"])
+        self.assertIn("intraday_screen", row["跑"])
+        self.assertNotIn("news", row["跑"])
         self.assertEqual(row["缺快照"], "未挂")
         self.assertNotIn("五行", row["跑"])
+
+    def test_fetch_ask_names_the_three_scripts(self) -> None:
+        row = plan("2026-11-10 23:45", "取数")
+        self.assertEqual(row["窗口"], "取数")
+        self.assertEqual(
+            row["跑"],
+            "info_diff、intraday_brief、intraday_screen、close_inputs、sector_drive、a50、cctv、cfbond、cninfo、cash",
+        )
 
     def test_yaogu_row_has_no_score_word(self) -> None:
         text = format_plan(plan("2026-11-10 14:55", "妖股 14:55"))

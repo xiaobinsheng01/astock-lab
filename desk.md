@@ -6,7 +6,7 @@
 
 ## 两个窗口
 
-先跑 `python -m astock route --at <北京时间> --ask <原话>`。取数窗口才采集，写入 `runtime/lake/`。分析窗口只读已经印出的快照；缺了写未跑或未挂，不补抓，也不问要不要取数。初分只在持仓没提供时写「待提供」。不订阅定时。周末和放假不新写行情。下一交易日的终分读完，才把更早的热层文件搬进 `runtime/lake/archive/`。
+先跑 `python -m astock route --at <北京时间> --ask <原话>`。取数窗口才采集，写入 `runtime/lake/`。分析窗口只读已经印出的快照；缺了写未跑或未挂，不补抓，也不问要不要取数。用户原话带「取数」「取行情」「补缺口」时走取数窗口。`route` 的「跑」用模块全名，必须含 `info_diff`、`intraday_brief`、`intraday_screen`。入口短名 `news`、`brief`、`screen` 只给 `python -m astock <短名>` 用，不写进这一行。初分只在持仓没提供时写「待提供」。不订阅定时。周末和放假不新写行情。下一交易日的终分读完，才把更早的热层文件搬进 `runtime/lake/archive/`。
 
 事实一句先跑 `python -m astock sentence`。片段已经是一句清楚的数字，就不再调用模型。否则只在取数窗口用 Composer 2.5 Fast 把片段收成一句，再交回 `sentence` 校验。句中数字在片段里对不上，这句作废。
 
@@ -54,6 +54,7 @@
 
 | 用户要的 | 读 | 跑（只在取数窗口；分析窗口不补抓） |
 | --- | --- | --- |
+| 取数、取行情、补缺口 | 热层写入位置；`01-data.md` 的「取数」「资料面增量」「当轮使用」 | `python -m astock.info_diff`，`python -m astock.intraday_brief`，`python -m astock.intraday_screen`，`python -m astock.close_inputs`，`python -m astock.sector_drive`，以及 a50、cctv、cfbond、cninfo、cash。写入 `runtime/lake/`。不写五行，不重算主仓，不分档妖股 |
 | 预判、接下来的走势、板块波动、大盘分析、截图上的异动 | 「硬门」；`04-judgment.md` 的「全天走势」「发力板块」「发力个股」「对冲与托住」「修复日」「三类决策」「个股四条路径」；`01-data.md` 的「当轮使用」 | `python -m astock.info_diff`，`python -m astock.intraday_brief`，`python -m astock.intraday_screen`。brief 的低点、高点和三个开关按当日事实取舍 |
 | 盘中分析，交易日 10:00、12:50、14:00 | 上一行这些节，再加 `05-execution.md` 的「盘中分析」、`03-account.md` 的「持仓结构」 | 同上。W1–W5 只在有新的官方数字时按「当轮使用」改那一格，这是计分时点，不是少算路径和个股 |
 | 个股分析，发力个股，或点名一只非持仓 | 「硬门」；`04-judgment.md` 的「发力个股」「个股四条路径」；`03-account.md` 的「持仓结构」 | `python -m astock.sector_drive`。六项门槛全部算。答复按 `names` 里的全部过线名字写。用户点名的那一只和已提供持仓另写四条路径 |
