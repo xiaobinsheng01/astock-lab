@@ -421,6 +421,122 @@ def merge_watch(focus_rows: list[dict], passed_rows: list[dict], score: float) -
     return ordered
 
 
+FORCED_GROUPS = (
+    {"name": "光伏", "board": "BK1031", "index": "931151"},
+    {"name": "机器人", "board": "BK1408", "index": "H30590"},
+    {"name": "传媒", "board": "BK0486", "index": "399971"},
+)
+THEME_BOARDS = {
+    "通用设备": "BK0545",
+    "汽车零部件": "BK0481",
+    "汽车零部": "BK0481",
+}
+
+
+def forced_best(rows: list[dict], score: float) -> dict:
+    """Sort passers. The first name that is still 观察 is the one to watch.
+
+    A down close stays on the list and leaves 观察. Below 0.4 nothing is 核对.
+    This column does not enter the four drive indexes and does not open a position.
+    """
+    picked = recommend(rows, set())["names"]
+    for row in picked:
+        row["failed"] = failed_gates(row)
+        row["action"] = row_action(row, score)
+    watched = [row for row in picked if row.get("action") == "观察"]
+    return {"names": picked, "best": watched[0] if watched else None}
+
+
+def _em_fetch(url: str) -> dict:
+    hosts = ("https://push2delay.eastmoney.com", "https://29.push2.eastmoney.com")
+    path = url.split(".com", 1)[1]
+    last = None
+    for host in hosts:
+        req = urllib.request.Request(
+            host + path,
+            headers={"User-Agent": "Mozilla/5.0", "Referer": "https://quote.eastmoney.com/"},
+        )
+        for _ in range(2):
+            try:
+                with urllib.request.urlopen(req, timeout=20) as response:
+                    return json.loads(response.read().decode("utf-8", "replace"))
+            except Exception as exc:  # noqa: BLE001 — the next host is the public fallback
+                last = exc
+    raise RuntimeError(f"board list unavailable: {type(last).__name__}")
+
+
+def fetch_concept_board(board: str) -> list[dict]:
+    """Eastmoney board members. Market cap is yuan and is converted to 亿元."""
+    rows = []
+    page = 1
+    total = None
+    while total is None or len(rows) < total:
+        url = (
+            "https://push2delay.eastmoney.com/api/qt/clist/get?"
+            f"pn={page}&pz=100&po=1&np=1&fltt=2&invt=2&fid=f20"
+            f"&fs=b:{board}&fields=f12,f14,f20"
+        )
+        data = (_em_fetch(url).get("data")) or {}
+        total = int(data.get("total") or 0)
+        batch = data.get("diff") or []
+        if not batch:
+            break
+        for item in batch:
+            code = "".join(ch for ch in str(item.get("f12") or "") if ch.isdigit())
+            cap = _num(item.get("f20"))
+            rows.append(
+                {
+                    "code": code,
+                    "name": item.get("f14") or "",
+                    "cap_yi": None if cap is None else cap / 1e8,
+                }
+            )
+        page += 1
+        if page > 20:
+            break
+    return rows
+
+
+def screen_members(name: str, members: list[dict], trade_date: str, score: float) -> dict:
+    """Run the six gates on one forced group. Missing data stays unchecked."""
+    kept = []
+    for row in members:
+        if not main_board(row.get("code") or ""):
+            continue
+        if cap_ok(row.get("cap_yi")) != "pass":
+            continue
+        kept.append({**row, "industry": name, "cap": "pass"})
+    closes = _map_fetch(kept, lambda row: fetch_closes(row["code"]))
+    near_rows = []
+    for row in kept:
+        series = as_of(closes.get(row["code"]) or [], trade_date)
+        if not series or series[-1][0] != trade_date:
+            continue
+        stats = near_ma([px for _, px in series])
+        if stats["state"] != "pass":
+            continue
+        row.update(stats)
+        row["near"] = stats["state"]
+        row["close"] = stats["close"]
+        row["pct"] = prior_pct(series, trade_date)
+        row["rise"] = rise_amount(series, trade_date)
+        row["ma10_gap_pct"] = ma10_gap_pct(stats["close"], stats["ma10"])
+        near_rows.append(row)
+    holder_map = _map_fetch(near_rows, lambda row: fetch_holders(row["code"]))
+    earn_map = _map_fetch(near_rows, lambda row: fetch_earnings(row["code"]))
+    for row in near_rows:
+        periods = holder_map.get(row["code"]) or []
+        row["holder"] = holder_simple(periods)
+        row["prior_complex"] = prior_complex(periods)
+        row["state_capital"] = state_capital(periods[0] if periods else [])
+        row.update(earn_map.get(row["code"]) or {"earnings": "unchecked"})
+    result = forced_best(near_rows, score)
+    result["industry"] = name
+    result["candidates"] = len(kept)
+    result["near"] = len(near_rows)
+    return result
+
+
 def recommend(rows: list[dict], held: set[str]) -> dict:
     """Pass every gate. Group by industry, then by profit, then by the 10-day line."""
     passed = []
@@ -782,6 +898,15 @@ def self_check() -> int:
     by_code = {row["code"]: row for row in merged}
     check("a failed gate stays on the table", by_code["600498"]["failed"] == ["均线"] and by_code["600498"]["action"] == "观察")
     check("a down close leaves observation", by_code["002148"]["action"] == "留档")
+    forced = forced_best(
+        [
+            {"code": "600000", "industry": "光伏", "near": "pass", "holder": "simple", "earnings": "pass", "pct": 0.02, "profit": 2, "profit_yoy": 1, "ma10_gap_pct": 1.0},
+            {"code": "600001", "industry": "光伏", "near": "pass", "holder": "simple", "earnings": "pass", "pct": -0.01, "profit": 9, "profit_yoy": 1, "ma10_gap_pct": 0.2},
+        ],
+        0.08,
+    )
+    check("forced best skips a down close", (forced["best"] or {}).get("code") == "600000")
+    check("forced best stays observation", (forced["best"] or {}).get("action") == "观察")
     return failed
 
 
@@ -799,6 +924,33 @@ def main() -> int:
     us = {"growth": "split", "hot": [], "cold": [], "session": "pending"}
     if "--us-json" in sys.argv:
         us = json.loads(sys.argv[sys.argv.index("--us-json") + 1])
+    if "--forced" in sys.argv:
+        from astock.close_inputs import limit_pool
+
+        groups = [dict(item) for item in FORCED_GROUPS]
+        pool = limit_pool(trade_date.replace("-", ""))
+        seen = set()
+        top_count = None
+        for industry, count in pool.get("top_hy") or []:
+            if top_count is None:
+                top_count = count
+            if count != top_count:
+                break
+            board = THEME_BOARDS.get(industry)
+            if not board or board in seen:
+                continue
+            seen.add(board)
+            groups.append({"name": "题材:" + industry, "board": board, "index": ""})
+        out = []
+        for item in groups:
+            members = fetch_concept_board(item["board"])
+            screened = screen_members(item["name"], members, trade_date, 0.08)
+            screened["board"] = item["board"]
+            screened["index"] = item["index"]
+            out.append(screened)
+        json.dump(out, sys.stdout, ensure_ascii=False, default=str)
+        sys.stdout.write("\n")
+        return 0
     result = screen("above_prior_high", {
         "000685": 12.61,
         "399811": 10.91,
