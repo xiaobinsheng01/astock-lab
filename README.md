@@ -40,14 +40,19 @@ python -m astock.intraday_screen
 python -m astock.sector_drive
 python -m astock.overseas_feed
 python -m astock.us_sectors
+python -m astock yaogu --monitor
+python -m astock route --at "2026-11-10 10:00" --ask "盘中"
+python -m astock lake hot --today 2026-11-10
 ```
 
-短名与上面的模块一一对应：`close`、`news`、`brief`、`screen`、`drive`、`overseas`、`us`。例如 `python -m astock close --fast`。
+短名与上面的模块一一对应：`close`、`news`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`。例如 `python -m astock close --fast`。
+
+取数和分析分成两个窗口。`route` 打印这一轮读什么、跑什么。分析窗口不取数。资料湖在 `runtime/lake/`，不进 git。
 
 离线核对：
 
 ```bash
-python -m unittest tests.test_overseas_feed tests.test_intraday_read
+python -m unittest tests.test_overseas_feed tests.test_intraday_read tests.test_route tests.test_sentence tests.test_lake tests.test_channels tests.test_yaogu
 python -m astock.close_inputs --self-check
 python -m astock.sector_drive --self-check
 python -m astock.us_sectors --self-check
