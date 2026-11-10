@@ -51,6 +51,7 @@
 | 预判、接下来的走势、板块波动、大盘分析、截图上的异动 | 「硬门」；`04-judgment.md` 的「全天走势」「发力板块」「发力个股」「对冲与托住」「修复日」「三类决策」「个股四条路径」；`01-data.md` 的「当轮使用」 | `python -m astock.info_diff`，`python -m astock.intraday_brief`，`python -m astock.intraday_screen`。brief 的低点、高点和三个开关按当日事实取舍 |
 | 盘中分析，交易日 10:00、12:50、14:00 | 上一行这些节，再加 `05-execution.md` 的「盘中分析」、`03-account.md` 的「持仓结构」 | 同上。W1–W5 只在有新的官方数字时按「当轮使用」改那一格，这是计分时点，不是少算路径和个股 |
 | 个股分析，发力个股，或点名一只非持仓 | 「硬门」；`04-judgment.md` 的「发力个股」「个股四条路径」；`03-account.md` 的「持仓结构」 | `python -m astock.sector_drive`。六项门槛全部算。答复按 `names` 里的全部过线名字写。用户点名的那一只和已提供持仓另写四条路径 |
+| 题材、光伏、传媒、机器人 | 「硬门」；`04-judgment.md` 的「近期关注」「发力个股」「个股四条路径」；`03-account.md` 的「持仓结构」 | `python -m astock.focus_sleeve`。不进发力名单。最优是每个方向排序第一只，过线的其余名字仍列出 |
 | 个股行情 | `05-execution.md` 的「个股行情」 | 不跑筛选脚本，除非用户同时要判断 |
 | 资料面两小时增量 | `01-data.md` 的「资料面增量」「外围市场资讯」「当轮使用」 | `python -m astock.info_diff`。列表上看见的带时分新稿这一轮全部处理 |
 | 终分 | `05-execution.md` 的「终分」全文；`04-judgment.md` 的「预测」「发力板块」「发力个股」；「缠论」「硬门」；三块 canvas；产出用 `06-output.md` 的五行 | `python -m astock.close_inputs`，`python -m astock.sector_drive`，`python -m astock.info_diff`。行为分按完整顺序重算。发力个股用 `names` 的全部 |
