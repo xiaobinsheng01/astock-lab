@@ -28,7 +28,7 @@ BLOCKED = {
 VR_OVERNIGHT = 1.3
 VR_VETO = 2.2
 
-# 2026-11-09 close. Seed of the monitor, not a live tier.
+# 2026-11-09 close. A settlement cohort, not the daily monitor.
 SEED: tuple[dict[str, Any], ...] = (
     {"code": "002310", "name": "东方新能", "board": 2, "close": 2.55, "vr": 0.66, "seed_tier": "持仓"},
     {"code": "603366", "name": "日出东方", "board": 2, "close": 9.89, "vr": 0.10, "seed_tier": "持仓"},
@@ -128,9 +128,42 @@ def classify(row: dict[str, Any]) -> dict[str, Any]:
         out["tier"] = "否决"
     elif board in (2, 3) and shape == "换手" and vr is not None and vr < VR_OVERNIGHT:
         out["tier"] = "隔夜"
+    elif board in (2, 3) and shape == "T字" and vr is not None and vr < VR_OVERNIGHT:
+        out["tier"] = "只看"
     else:
         out["tier"] = "观察"
     return out
+
+
+def tail_queue(row: dict[str, Any]) -> dict[str, Any]:
+    """14:55 queue. Yesterday's last five minutes are added before the 1.3 check.
+
+    A fill is not revoked when the full-day ratio is known at 15:10.
+    Missing last-five volume cannot queue.
+    """
+    prev = row.get("prev_volume")
+    last5 = row.get("last5_volume")
+    so_far = row.get("volume_1455")
+    result: dict[str, Any] = {
+        "code": str(row.get("code", "")),
+        "name": str(row.get("name", "")),
+        "queue": False,
+        "buffered_vr": None,
+        "fill_stands": False,
+    }
+    if last5 is None or not prev or so_far is None:
+        return result
+    probed = dict(row)
+    probed["volume"] = so_far
+    item = classify(probed)
+    buffered = (float(so_far) + float(last5)) / float(prev)
+    result["buffered_vr"] = round(buffered, 4)
+    result["code"] = item["code"]
+    result["name"] = item["name"]
+    qualifies = item["tier"] != "池外" and item["board"] in (2, 3) and item["shape"] == "换手" and buffered < VR_OVERNIGHT
+    result["queue"] = qualifies
+    result["fill_stands"] = qualifies
+    return result
 
 
 def _attention_key(item: dict[str, Any]) -> tuple[int, float, str] | None:
@@ -149,7 +182,7 @@ def _attention_key(item: dict[str, Any]) -> tuple[int, float, str] | None:
 
 
 def top5(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Up to five names. 隔夜, then board 2–3 一字, then board 1 一字. 观察 does not fill a seat."""
+    """Up to five names to check, not to buy. 隔夜, then board 2–3 一字, then board 1 一字."""
     ranked = []
     for row in rows:
         item = row if "tier" in row and "shape" in row else classify(row)
@@ -161,7 +194,7 @@ def top5(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def format_monitor() -> str:
-    lines = [f"初始监控 {len(SEED)} 只，种子日 2026-11-09"]
+    lines = [f"结算样本 {len(SEED)} 只，种子日 2026-11-09。不是每日监控池"]
     for row in SEED:
         lines.append(
             f"{row['seed_tier']}\t{row['code']}\t{row['name']}\t{row['board']}板\t{row['close']:.2f}\t量比{row['vr']:.2f}"
@@ -169,17 +202,28 @@ def format_monitor() -> str:
     return "\n".join(lines)
 
 
+def _vr_text(item: dict[str, Any]) -> str:
+    return "缺" if item["vr"] is None else f"{item['vr']:.2f}"
+
+
 def format_report(day: str, rows: list[dict[str, Any]]) -> str:
     picked = top5(rows)
+    watch = [row for row in rows if row.get("tier") == "只看"]
+    watch.sort(key=lambda item: (999.0 if item["vr"] is None else float(item["vr"]), item["code"]))
     gate = "可排队" if orders_allowed(day) else "窗口未开，不排队"
-    lines = [f"{day} 盘前五只 {gate}"]
+    lines = [f"{day} 盘前核对 {gate}"]
     if not picked:
-        lines.append("五只：无")
-        return "\n".join(lines)
+        lines.append("核对：无")
     for index, item in enumerate(picked, start=1):
-        vr = "缺" if item["vr"] is None else f"{item['vr']:.2f}"
         lines.append(
-            f"{index}\t{item['tier']}\t{item['code']}\t{item['name']}\t{item['board']}板\t{item['shape']}\t收盘{item['close']:.2f}\t量比{vr}"
+            f"{index}\t{item['tier']}\t{item['code']}\t{item['name']}\t{item['board']}板\t{item['shape']}\t收盘{item['close']:.2f}\t量比{_vr_text(item)}"
+        )
+    lines.append("只看不排")
+    if not watch:
+        lines.append("无")
+    for item in watch:
+        lines.append(
+            f"{item['code']}\t{item['name']}\t{item['board']}板\t{item['shape']}\t收盘{item['close']:.2f}\t量比{_vr_text(item)}"
         )
     return "\n".join(lines)
 
