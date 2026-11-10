@@ -214,10 +214,19 @@ def main() -> int:
         mounts.append({"source": "overseas_feed", "error": type(exc).__name__})
     payload = pack(rows)
     attach_facts(payload["open"] + payload["gap"])
+    cls_rows: list[dict] = []
+    try:
+        from astock.cls_feed import fetch_telegraph, telegraph_rows
+
+        cls_rows = telegraph_rows(fetch_telegraph(cursor), ledger, cursor)
+    except Exception as exc:  # noqa: BLE001 — a dead wire is a mount note
+        mounts.append({"source": "财联社电报", "url": "https://www.cls.cn/telegraph", "error": type(exc).__name__})
+    payload["cls"] = [row for row in cls_rows if row["status"] in {"原料", "转载", "缺口"}]
+    payload["comment_skipped"] += sum(1 for row in cls_rows if row["status"] == "不进W1–W5")
     payload["overseas_new"] = overseas
     payload["mounts"] = mounts
     payload["cursor"] = cursor
-    payload["empty"] = not payload["open"] and not payload["gap"] and not overseas
+    payload["empty"] = not payload["open"] and not payload["gap"] and not overseas and not payload["cls"]
     json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     return 0
