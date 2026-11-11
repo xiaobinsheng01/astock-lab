@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Hot and archive storage for one desk. No score, no order.
 
-Quotes in the hot layer are the previous trading session and the current one.
-A day without an open does not get a new quote file. News from the previous
-trading day through the current moment stays hot, including weekends and
-holidays. The next trading day's finished 终分 moves older hot files out.
+Quotes in the hot layer are the previous session and the current calendar day.
+Weekends and holidays still get a quote file, so the hot layer is not missing
+that day. News from the previous trading day through the current moment stays
+hot. The next trading day's finished 终分 moves older hot files out.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ def hot_quote_dates(
     """Sessions still in the hot layer.
 
     A finished 终分 on `trade_date` archives sessions strictly before that date.
-    Weekend and holiday mornings do not add a session.
+    A weekend or holiday stays once its quote has been written.
     """
     ordered = sorted(set(sessions))
     if today_has_open and today not in ordered:
@@ -76,16 +76,15 @@ def _finals(root: Path) -> list[str]:
 
 
 def write_quote(root: Path, session_date: str, payload: dict, *, today_has_open: bool) -> dict:
-    """Store one session's quote snapshot. A closed day writes nothing."""
-    if not today_has_open or is_weekend(session_date):
-        return {"status": "非交易日", "path": ""}
+    """Store one session's quote snapshot, including weekends and holidays."""
     path = root / "hot" / "quotes" / f"{session_date}.json"
     _dump(path, payload)
     sessions = _sessions(root)
     if session_date not in sessions:
         sessions.append(session_date)
         _dump(root / "sessions.json", sorted(sessions))
-    return {"status": "已写", "path": str(path)}
+    closed = (not today_has_open) or is_weekend(session_date)
+    return {"status": "已写", "path": str(path), "closed": closed}
 
 
 def write_news(root: Path, publish_date: str, fact: dict) -> dict:

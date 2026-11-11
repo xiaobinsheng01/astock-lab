@@ -40,14 +40,32 @@ class HotDateTest(unittest.TestCase):
 
 
 class StoreTest(unittest.TestCase):
-    def test_weekend_quote_is_not_written(self) -> None:
+    def test_weekend_and_holiday_quotes_are_written(self) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            result = write_quote(root, "2026-11-08", {"px": 1}, today_has_open=False)
-            self.assertEqual(result["status"], "非交易日")
-            self.assertFalse((root / "hot" / "quotes").exists())
+            friday = write_quote(root, "2026-11-06", {"px": 3600}, today_has_open=True)
+            weekend = write_quote(root, "2026-11-08", {"px": 1}, today_has_open=False)
+            holiday = write_quote(root, "2026-10-01", {"px": 2}, today_has_open=False)
+            self.assertEqual(friday["status"], "已写")
+            self.assertFalse(friday["closed"])
+            self.assertEqual(weekend["status"], "已写")
+            self.assertTrue(weekend["closed"])
+            self.assertEqual(holiday["status"], "已写")
+            self.assertTrue(holiday["closed"])
+            sunday = json.loads((root / "hot" / "quotes" / "2026-11-08.json").read_text(encoding="utf-8"))
+            national = json.loads((root / "hot" / "quotes" / "2026-10-01.json").read_text(encoding="utf-8"))
+            self.assertEqual(sunday["px"], 1)
+            self.assertEqual(national["px"], 2)
+            sessions = json.loads((root / "sessions.json").read_text(encoding="utf-8"))
+            hot = hot_quote_dates(
+                sessions,
+                today="2026-11-08",
+                today_has_open=False,
+                final_dates=["2026-11-06"],
+            )
+            self.assertEqual(hot, ["2026-11-06", "2026-11-08"])
 
     def test_news_survives_the_weekend_until_the_next_final(self) -> None:
         import tempfile
