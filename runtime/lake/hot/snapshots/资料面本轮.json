@@ -1,0 +1,27 @@
+{
+  "采集": "2026-11-12 06:34",
+  "游标": "2026-11-12 06:34",
+  "上一游标": "2026-11-11 21:12",
+  "国内带时分新稿": 0,
+  "缺口": 0,
+  "无发布时间": 226,
+  "评论跳过": 5,
+  "外围已打开": [
+    "https://www.news.cn/fortune/20261112/4140d9c06d2c481f8d8a5c518cce5252/c.html",
+    "https://www.news.cn/fortune/20261112/33df36f1f2294ac9bdc0be7082d9bad2/c.html",
+    "https://www.news.cn/fortune/20261112/af115a42f61f40d3b70ee1aa8aa84fd1/c.html",
+    "https://www.news.cn/fortune/20261112/7c6e6eb837b94d299c625b76d8452f73/c.html"
+  ],
+  "中国财富网": {
+    "状态": "未挂",
+    "错误": "HTTP 514",
+    "地址": "https://www.cfbond.com/zgcfw/ejy/yw/list.shtml"
+  },
+  "央视脚本": {
+    "状态": "栏目未挂",
+    "地址": "https://tv.cctv.com/lm/xwlb/index.shtml"
+  },
+  "交易时间": "栏目页已打开，没有栏目编号，列表未挂",
+  "巨潮": "按代码返回的证券简称与昊华科技、烽火通信、有研新材、中瓷电子、中航光电对不上。简称检索 HTTP 500。不写成没发公告。",
+  "行为分": "仍是 0.36，本轮不重算"
+}
