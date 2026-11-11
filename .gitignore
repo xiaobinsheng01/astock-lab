@@ -3,4 +3,3 @@ __pycache__/
 runtime/info-ledger.md
 runtime/cache/*
 !runtime/cache/.gitkeep
-runtime/lake/
