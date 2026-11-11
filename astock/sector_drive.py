@@ -336,15 +336,13 @@ def _line_key(gap) -> tuple:
 
 
 def recommend(rows: list[dict], held: set[str]) -> dict:
-    """Pass every gate. Group by industry, then by profit, then by the 10-day line."""
+    """Pass the entry gates. Earnings is recorded and only affects sort order."""
     passed = []
     held_aside = []
     for row in rows:
         if row.get("near") != "pass":
             continue
         if row.get("holder") != "simple":
-            continue
-        if row.get("earnings") != "pass":
             continue
         if row["code"] in held:
             held_aside.append(row)
@@ -660,6 +658,55 @@ def self_check() -> int:
     check("earnings pass", earnings_state(1, 0, 0) == "pass")
     check("earnings loss", earnings_state(-1, 10, 10) == "fail")
     check("earnings gap", earnings_state(1, None, 1) == "unchecked")
+    earnings_kept = recommend(
+        [
+            {
+                "code": "600009",
+                "industry": "CSSW电子",
+                "near": "pass",
+                "holder": "simple",
+                "earnings": "fail",
+                "gap": 0.01,
+                "profit": -1,
+                "profit_yoy": -1,
+                "ma10_gap_pct": 1,
+            },
+            {
+                "code": "600010",
+                "industry": "CSSW电子",
+                "near": "pass",
+                "holder": "simple",
+                "earnings": "unchecked",
+                "gap": 0.02,
+                "ma10_gap_pct": 1,
+            },
+        ],
+        set(),
+    )
+    check(
+        "earnings does not remove a name",
+        [row["code"] for row in earnings_kept["names"]] == ["600009", "600010"],
+    )
+    held_fail = recommend(
+        [
+            {
+                "code": "600011",
+                "industry": "CSSW电子",
+                "near": "pass",
+                "holder": "simple",
+                "earnings": "fail",
+                "gap": 0.01,
+                "profit": 1,
+                "profit_yoy": 1,
+                "ma10_gap_pct": 1,
+            }
+        ],
+        {"600011"},
+    )
+    check(
+        "held stays aside without an earnings pass",
+        held_fail["names"] == [] and [row["code"] for row in held_fail["held_aside"]] == ["600011"],
+    )
     note = us_note(INDUSTRIES[0], "split", {"XLK", "XLC"}, {"SMH", "SOXX", "XLE"}, "intraday")
     check("split keeps a note", "不确认" in note and "待收盘" in note)
     members = {
