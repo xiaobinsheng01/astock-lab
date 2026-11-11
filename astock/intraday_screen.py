@@ -284,12 +284,21 @@ def screen(day: str) -> dict:
                     key: judged.get(key) for key in ("simple", "state", "hits", "complex_one", "days")
                 }
     save_cache(cache)
-    passed = []
+    marks = split_marks(opened)
+    return {"summary": summary, "opened": opened, **marks}
+
+
+def split_marks(opened: list[dict]) -> dict:
+    """Two rows. A name can sit on one row, both, or neither."""
+    simple_rows = []
+    state_rows = []
     for row in opened:
-        cell = row["holder"]
-        if cell.get("simple") == "简单" and cell.get("state") == "有":
-            passed.append(row)
-    return {"summary": summary, "opened": opened, "passed": passed}
+        cell = row.get("holder") or {}
+        if cell.get("simple") == "简单":
+            simple_rows.append(row)
+        if cell.get("state") == "有":
+            state_rows.append(row)
+    return {"simple_rows": simple_rows, "state_rows": state_rows}
 
 
 def _fmt(value, digits: int) -> str:
@@ -326,14 +335,27 @@ def main() -> int:
             )
         )
     print("判断结果")
-    if not payload["passed"]:
+    print("结构简单")
+    simple_rows = payload["simple_rows"]
+    if not simple_rows:
         print("无")
-        return 0
-    for row in payload["passed"]:
-        for hit in row["holder"].get("hits") or []:
+    for row in simple_rows:
+        cell = row["holder"]
+        print(f"{row['industry']} {row['code']} {row['name']} {cell.get('state') or '未核'}")
+    print("国有资金新进")
+    state_rows = payload["state_rows"]
+    if not state_rows:
+        print("无")
+    for row in state_rows:
+        cell = row["holder"]
+        hits = cell.get("hits") or []
+        if not hits:
+            print(f"{row['industry']} {row['code']} {row['name']} {cell.get('simple') or '未核'}")
+            continue
+        for hit in hits:
             print(
-                f"{row['code']} {row['name']} 本期 {hit.get('day')} 上期 {hit.get('prev')} "
-                f"{hit.get('name')} {hit.get('ratio')} 新进"
+                f"{row['industry']} {row['code']} {row['name']} {cell.get('simple') or '未核'} "
+                f"本期 {hit.get('day')} 上期 {hit.get('prev')} {hit.get('name')} {hit.get('ratio')} 新进"
             )
     return 0
 

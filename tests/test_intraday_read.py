@@ -7,7 +7,7 @@ import unittest
 
 from astock.info_diff import article_fact, classify_link, links_from_html, pack
 from astock.intraday_brief import pair, path_text, segment
-from astock.intraday_screen import assign, both_averages, judge_holders
+from astock.intraday_screen import assign, both_averages, judge_holders, split_marks
 
 
 def _holder(name: str, change: str = "", ratio=1.0) -> dict:
@@ -58,7 +58,18 @@ class ScreenTest(unittest.TestCase):
         self.assertEqual([row["code"] for row in assigned["399389"]], ["600050"])
         self.assertEqual(assigned["000993"], [])
 
-    def test_new_state_capital_passes_only_when_the_structure_is_simple(self) -> None:
+    def test_marks_split_into_simple_and_new_state_capital(self) -> None:
+        rows = [
+            {"code": "603005", "holder": {"simple": "简单", "state": "有"}},
+            {"code": "002049", "holder": {"simple": "复杂", "state": "有"}},
+            {"code": "002402", "holder": {"simple": "简单", "state": "无"}},
+            {"code": "600000", "holder": {"simple": "未核", "state": "未核"}},
+        ]
+        marks = split_marks(rows)
+        self.assertEqual([row["code"] for row in marks["simple_rows"]], ["603005", "002402"])
+        self.assertEqual([row["code"] for row in marks["state_rows"]], ["603005", "002049"])
+
+    def test_new_state_capital_stays_marked_when_the_structure_is_complex(self) -> None:
         plain = [(name, "") for name in TEN]
         current = plain[:9] + [("国新宏盛投资(北京)有限公司", "新进")]
         prior = [(name, "") for name in TEN]
