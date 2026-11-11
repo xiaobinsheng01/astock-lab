@@ -8,6 +8,8 @@
 
 先跑 `python -m astock route --at <北京时间> --ask <原话>`。取数窗口才采集，写入 `runtime/lake/`。分析窗口只读已经印出的快照；缺了写未跑或未挂，不补抓，也不问要不要取数。初分只在持仓没提供时写「待提供」。不订阅定时。周末和放假也写行情，热层不留空档。下一交易日的终分读完，才把更早的热层文件搬进 `runtime/lake/archive/`。
 
+取数、资料面、取行情、补缺口走同一条链路：`python -m astock chain`。顺序是 news、close、drive、brief、screen、a50、cctv、cfbond、cninfo、cash。brief 没有当日低点和高点时，这一步记未跑，不补一个数。初分不在这条链路里。
+
 事实一句先跑 `python -m astock sentence`。片段已经是一句清楚的数字，就不再调用模型。否则只在取数窗口用 Composer 2.5 Fast 把片段收成一句，再交回 `sentence` 校验。句中数字在片段里对不上，这句作废。
 
 ## 分层

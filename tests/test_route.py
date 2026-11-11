@@ -38,11 +38,23 @@ class RouteTest(unittest.TestCase):
         self.assertEqual(plan("2026-11-10 14:10", "盘中")["轮次"], "盘中 14:00")
 
     def test_data_window_is_the_only_fetcher(self) -> None:
-        row = plan("2026-11-10 15:15", "跑资料面")
-        self.assertEqual(row["窗口"], "取数")
-        self.assertIn("news", row["跑"])
-        self.assertEqual(row["缺快照"], "未挂")
-        self.assertNotIn("五行", row["跑"])
+        from astock.chain import EXCLUDED, STEPS
+
+        rows = [plan("2026-11-10 15:15", ask) for ask in ("取数", "资料面", "取行情", "补缺口")]
+        for row in rows:
+            self.assertEqual(row["窗口"], "取数")
+            self.assertEqual(row["跑"], "chain")
+            self.assertEqual(row["缺快照"], "未挂")
+            self.assertNotIn("五行", row["跑"])
+            self.assertNotIn("初分", row["跑"])
+            self.assertIn("初分", row["不打开"])
+        self.assertEqual(len({row["跑"] for row in rows}), 1)
+        self.assertIn("news", STEPS)
+        self.assertNotIn("初分", STEPS)
+        self.assertIn("初分", EXCLUDED)
+        prelim = plan("2026-11-10 21:25", "初分")
+        self.assertEqual(prelim["窗口"], "分析")
+        self.assertEqual(prelim["跑"], "无")
 
     def test_yaogu_row_has_no_score_word(self) -> None:
         text = format_plan(plan("2026-11-10 14:55", "妖股 14:55"))

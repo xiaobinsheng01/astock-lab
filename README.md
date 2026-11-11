@@ -43,9 +43,10 @@ python -m astock.us_sectors
 python -m astock yaogu --monitor
 python -m astock route --at "2026-11-10 10:00" --ask "盘中"
 python -m astock lake hot --today 2026-11-10
+python -m astock chain
 ```
 
-短名与上面的模块一一对应：`close`、`news`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`。例如 `python -m astock close --fast`。
+短名与上面的模块一一对应：`close`、`news`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`、`chain`。例如 `python -m astock close --fast`。`chain` 把取数窗口收成一条链路，初分不在里面。
 
 取数和分析分成两个窗口。`route` 打印这一轮读什么、跑什么。分析窗口不取数。资料湖在 `runtime/lake/`，不进 git。
 

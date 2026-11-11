@@ -26,6 +26,7 @@ COMMANDS = {
     "cfbond": "astock.cfbond_feed",
     "cninfo": "astock.cninfo_feed",
     "cash": "astock.cash_close",
+    "chain": "astock.chain",
 }
 
 
@@ -50,6 +51,7 @@ def _usage() -> str:
         "  cfbond    中国财富网要闻                 python -m astock cfbond",
         "  cninfo    巨潮公告                       python -m astock cninfo",
         "  cash      9:00 现金价                    python -m astock cash",
+        "  chain     取数一条链路，不含初分          python -m astock chain",
     ]
     return "\n".join(lines)
 
