@@ -48,7 +48,7 @@ class ScreenTest(unittest.TestCase):
         longer = [10] * 20
         above = both_averages(longer, 10.01)
         self.assertEqual(above["state"], "above")
-        self.assertEqual(above["ma20_word"], "已站上")
+        self.assertEqual(above["ma20_word"], "上方")
 
     def test_chip_names_are_not_counted_again_on_electronics(self) -> None:
         members = {

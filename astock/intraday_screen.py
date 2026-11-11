@@ -59,7 +59,7 @@ def assign(members: dict[str, list[dict]]) -> dict[str, list[dict]]:
 def both_averages(closes: list[float], live) -> dict:
     """Live price must clear both averages. Today's close is inside the averages.
 
-    The 20-day line is reported beside them. It does not decide who is opened.
+    The 20-day line is only a position mark. It does not remove a name.
     """
     marked = ma20_mark(closes, live if live is not None and live > 0 else (closes[-1] if closes else None))
     if len(closes) < 10 or any(px is None or px <= 0 for px in closes[-10:]):

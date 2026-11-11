@@ -92,7 +92,7 @@ def cap_ok(cap_yi) -> str:
 
 
 def ma20_mark(closes: list[float], price) -> dict:
-    """Where the close sits versus the 20-day line. This is not an entry gate."""
+    """Where the close sits versus the 20-day line. Position only, never a filter."""
     px = _num(price)
     if px is None or px <= 0:
         px = _num(closes[-1]) if closes else None
@@ -108,9 +108,9 @@ def ma20_mark(closes: list[float], price) -> dict:
     if gap is None:
         word = "未核"
     elif gap < 0:
-        word = "已站上"
+        word = "上方"
     elif gap > 0:
-        word = "还差"
+        word = "下方"
     else:
         word = "贴着"
     return {"ma20": average, "ma20_gap_pct": gap, "ma20_word": word}
@@ -680,7 +680,7 @@ def self_check() -> int:
     below_ma20 = near_ma([100] * 10 + [10] * 10)
     check(
         "20-day line does not change the 5-day and 10-day gate",
-        below_ma20["state"] == "pass" and below_ma20["ma20_word"] == "还差",
+        below_ma20["state"] == "pass" and below_ma20["ma20_word"] == "下方",
     )
     on_ma20 = near_ma([10] * 20)
     check("flat 20-day line is touching", on_ma20["ma20_word"] == "贴着" and on_ma20["state"] == "pass")
