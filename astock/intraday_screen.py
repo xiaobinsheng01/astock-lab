@@ -229,15 +229,40 @@ def screen(day: str) -> dict:
             bars[code] = series
     quotes = fetch_quotes([row["code"] for row in flat])
     grouped: dict[str, list[dict]] = {item["index"]: [] for item in INDUSTRIES}
+    no_today: dict[str, list[dict]] = {item["index"]: [] for item in INDUSTRIES}
     for row in flat:
         series = bars.get(row["code"]) or []
+        quote = quotes.get(row["code"]) or {}
         if not series or series[-1][0] != day:
+            # Missing the current bar is "unchecked", never a silent zero.
+            no_today[row["index"]].append(
+                {
+                    **row,
+                    "name": quote.get("name") or row.get("name") or "",
+                    "px": quote.get("px"),
+                    "pct": quote.get("pct"),
+                    "state": "未核",
+                    "reason": "无当日K线",
+                }
+            )
             continue
-        live = (quotes.get(row["code"]) or {}).get("px")
-        stats = both_averages([px for _, px in series], live)
+        # Averages are computed through the PRIOR bars; the live price is the
+        # only current-day input, so today is not counted twice.
+        stats = both_averages([px for _, px in series[:-1]], quote.get("px"))
+        if stats["state"] == "unchecked":
+            no_today[row["index"]].append(
+                {
+                    **row,
+                    "name": quote.get("name") or row.get("name") or "",
+                    "px": quote.get("px"),
+                    "pct": quote.get("pct"),
+                    "state": "未核",
+                    "reason": "均线样本不足",
+                }
+            )
+            continue
         if stats["state"] != "above":
             continue
-        quote = quotes.get(row["code"]) or {}
         grouped[row["index"]].append(
             {
                 **row,
@@ -257,6 +282,8 @@ def screen(day: str) -> dict:
         rows = grouped[item["index"]]
         rows.sort(key=lambda row: (row["pct"] is None, -(row["pct"] or -999)))
         keep = [row for row in rows if row["pct"] is not None]
+        missing = no_today[item["index"]]
+        missing.sort(key=lambda row: (row["pct"] is None, -(row["pct"] or -999)))
         for row in keep:
             cached = cache.get(row["code"])
             if isinstance(cached, dict) and cached.get("simple"):
@@ -270,9 +297,11 @@ def screen(day: str) -> dict:
                 "name": item["name"],
                 "above": len(rows),
                 "opened": len(keep),
-                "unchecked": max(0, len(rows) - len(keep)),
+                "unchecked": max(0, len(rows) - len(keep)) + len(missing),
+                "no_today": len(missing),
             }
         )
+    payload_missing = [row for item in INDUSTRIES for row in no_today[item["index"]]]
     if pending:
         with ThreadPoolExecutor(max_workers=16) as pool:
             futures = {pool.submit(judge_one, row["code"]): row for row in pending}
@@ -289,7 +318,12 @@ def screen(day: str) -> dict:
         cell = row["holder"]
         if cell.get("simple") == "简单" and cell.get("state") == "有":
             passed.append(row)
-    return {"summary": summary, "opened": opened, "passed": passed}
+    return {
+        "summary": summary,
+        "opened": opened,
+        "missing": payload_missing,
+        "passed": passed,
+    }
 
 
 def _fmt(value, digits: int) -> str:
@@ -325,6 +359,15 @@ def main() -> int:
                 ]
             )
         )
+    print("本轮未核")
+    if not payload["missing"]:
+        print("无")
+    else:
+        for row in payload["missing"]:
+            print(
+                f"{row['industry']} {row['code']} {row['name']} {_fmt(row.get('px'), 2)} "
+                f"{_fmt(row.get('pct'), 2)} {row.get('state')} {row.get('reason')}"
+            )
     print("判断结果")
     if not payload["passed"]:
         print("无")

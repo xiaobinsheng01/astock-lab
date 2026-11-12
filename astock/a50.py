@@ -6,6 +6,40 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import urllib.request
+from datetime import datetime, timedelta, timezone
+
+SINA_URL = "https://hq.sinajs.cn/list=hf_CHA50CFD"
+BEIJING = timezone(timedelta(hours=8))
+
+
+def fetch_live() -> dict:
+    """Fetch the night price and prior settle from the public Sina host.
+
+    Returns latest/previous/clock. A dead host is reported, never silently 0.
+    """
+    req = urllib.request.Request(
+        SINA_URL,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Referer": "https://finance.sina.com.cn",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            raw = resp.read().decode("gbk", "replace")
+    except Exception as exc:  # noqa: BLE001 — caller writes 未挂 with the cause
+        return {"error": type(exc).__name__}
+    payload = raw.split('"', 1)
+    if len(payload) < 2:
+        return {"error": "EmptyPayload"}
+    fields = payload[1].split('"', 1)[0].split(",")
+    if len(fields) < 13 or not fields[0]:
+        return {"error": "NoPrice"}
+    latest = fields[0]
+    previous = fields[2]
+    clock = f"{fields[12]} {fields[6]}"
+    return {"latest": latest, "previous": previous, "clock": clock}
 
 
 def assess(latest, previous, clock: str) -> dict:
@@ -37,13 +71,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--latest", default="")
     parser.add_argument("--prev", default="")
     parser.add_argument("--clock", default="", help="报价的北京时间")
+    parser.add_argument("--live", action="store_true", help="自己取价（默认无参数时也自取）")
     args = parser.parse_args(argv)
-    latest = args.latest or None
-    previous = args.prev or None
-    try:
-        result = assess(latest, previous, args.clock)
-    except ValueError:
-        result = {"status": "未挂", "text": "A50 报价打不开"}
+    if args.live or (not args.latest and not args.clock):
+        live = fetch_live()
+        if "error" in live:
+            result = {"status": "未挂", "text": "A50 报价未挂", "error": live["error"]}
+        else:
+            result = assess(live["latest"], live["previous"], live["clock"])
+    else:
+        latest = args.latest or None
+        previous = args.prev or None
+        try:
+            result = assess(latest, previous, args.clock)
+        except ValueError:
+            result = {"status": "未挂", "text": "A50 报价打不开"}
     json.dump(result, sys.stdout, ensure_ascii=False)
     sys.stdout.write("\n")
     return 0

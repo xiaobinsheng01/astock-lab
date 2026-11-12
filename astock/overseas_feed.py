@@ -41,6 +41,8 @@ MARKET = (
 MARKET_PLACE = ("美国", "纽约", "欧洲", "伦敦", "东京", "香港", "日本")
 EARNINGS = ("营收", "净利润", "财报", "并购")
 EARNINGS_WHERE = ("美国", "美股", "纽约", "欧洲", "日本", "香港")
+# Overseas corporate / policy events that must not vanish from the desk.
+EVENT = ("人事", "管制", "制裁", "停产", "指引")
 
 LINK_RE = re.compile(
     r"""<a[^>]+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)</a>""",
@@ -66,6 +68,11 @@ def classify(title: str) -> str | None:
         word in title for word in EARNINGS_WHERE
     ):
         return "earnings"
+    if any(word in title for word in EVENT) and (
+        any(word in title for word in EARNINGS_WHERE)
+        or any(word in title for word in ("公司", "企业", "集团"))
+    ):
+        return "event"
     return None
 
 
@@ -94,18 +101,32 @@ def fetch(url: str, timeout: int = 20) -> str:
         return resp.read().decode("utf-8", "replace")
 
 
+def _round_robin(world: list[dict], fortune: list[dict], limit: int) -> list[dict]:
+    """Alternate sources so one list cannot consume every opening slot."""
+    out: list[dict] = []
+    index = 0
+    while len(out) < limit and (index < len(world) or index < len(fortune)):
+        if index < len(world):
+            out.append(world[index])
+        if len(out) < limit and index < len(fortune):
+            out.append(fortune[index])
+        index += 1
+    return out
+
+
 def collect(limit: int) -> list[dict]:
-    rows: list[dict] = []
+    by_source: dict[str, list[dict]] = {}
+    notes = []
     for source, url in (("world", WORLD_URL), ("fortune", FORTUNE_URL)):
         try:
             html = fetch(url)
         except Exception as exc:  # noqa: BLE001 — record the list as unavailable
-            rows.append({"source": source, "kind": "unmounted", "title": "", "url": url, "error": type(exc).__name__})
+            notes.append({"source": source, "kind": "unmounted", "title": "", "url": url, "error": type(exc).__name__})
+            by_source[source] = []
             continue
-        rows.extend(items_from_html(html, source))
-    kept = [row for row in rows if row.get("kind") != "unmounted"]
-    notes = [row for row in rows if row.get("kind") == "unmounted"]
-    return kept[:limit] + notes
+        by_source[source] = items_from_html(html, source)
+    kept = _round_robin(by_source.get("world", []), by_source.get("fortune", []), limit)
+    return kept + notes
 
 
 def main(argv: list[str] | None = None) -> int:

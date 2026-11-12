@@ -12,6 +12,8 @@ import json
 import sys
 import urllib.request
 
+from astock.net import context as net_context
+
 CODES = [
     "sh000001",
     "sz399001",
@@ -47,7 +49,7 @@ def fetch(url: str, timeout: int = 15) -> bytes:
             "Referer": "https://quote.eastmoney.com/",
         },
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=timeout, context=net_context()) as resp:
         return resp.read()
 
 
@@ -98,6 +100,27 @@ def breadth() -> dict:
         "yesterday_limit_up_avg_pcp",
     ]
     return {key: data.get(key) for key in keep}
+
+
+def breadth_close_status(quote_date: str, now=None) -> dict:
+    """Verify that `latest` breadth is a 15:00 close, not a pre-market tape.
+
+    The xuan gu bao endpoint carries no timestamp, so the session is verified
+    against the index quote date and the Beijing clock. A read before that
+    session's 15:00 is intraday, not a close structure.
+    """
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    now = now or datetime.now(ZoneInfo("Asia/Shanghai"))
+    today = now.strftime("%Y%m%d")
+    if quote_date == today:
+        if now.hour * 60 + now.minute >= 15 * 60:
+            return {"state": "已核15:00", "verified": True}
+        return {"state": "未到收盘", "verified": False}
+    if quote_date < today:
+        return {"state": "上一交易日收盘", "verified": True}
+    return {"state": "未核", "verified": False}
 
 
 def limit_pool(trade_date: str) -> dict:
@@ -1141,6 +1164,7 @@ def main() -> int:
             packet["gaps"].append("turnover:" + ratio["error"])
         if ratio.get("mismatch"):
             packet["gaps"].append("turnover_mismatch:" + ",".join(str(item) for item in ratio["mismatch"]))
+    breadth_verified = False
     if not fast:
         try:
             packet["breadth"] = breadth()
@@ -1153,6 +1177,11 @@ def main() -> int:
             if len(ts) >= 8 and ts[:8].isdigit():
                 trade_date = ts[:8]
                 break
+        close_status = breadth_close_status(trade_date)
+        packet["breadth_close"] = close_status
+        breadth_verified = bool(close_status.get("verified"))
+        if not breadth_verified:
+            packet["gaps"].append(f"选股宝家数未核到15:00：{close_status.get('state')}，W6家数不打分")
         try:
             packet["limit_up"] = limit_pool(trade_date)
         except Exception as exc:  # noqa: BLE001
@@ -1161,7 +1190,8 @@ def main() -> int:
     packet["repair"] = repair(q)
     packet["structure"] = structure(q)
     packet["sell_checks"] = sell_checks(q)
-    breadth_row = packet.get("breadth") or {}
+    breadth_row = packet.get("breadth") if breadth_verified else {}
+    breadth_row = breadth_row or {}
     rise = breadth_row.get("rise_count")
     fall = breadth_row.get("fall_count")
     breadth_ratio = None

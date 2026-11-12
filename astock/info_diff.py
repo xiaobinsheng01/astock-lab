@@ -15,6 +15,7 @@ import urllib.request
 
 from astock.overseas_feed import collect
 from astock.paths import LEDGER
+from astock.state import read_cursor as portable_cursor
 
 LINK_RE = re.compile(r"""<a[^>]+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)</a>""", re.I)
 URL_RE = re.compile(r"https?://[^\s|）<>\"']+")
@@ -96,6 +97,43 @@ def classify_link(
     return "无发布时间"
 
 
+BLOCK_END = (
+    "</a>",
+    "</li>",
+    "</p>",
+    "</dd>",
+    "</tr>",
+    "</div>",
+    "</h1>",
+    "</h2>",
+    "</h3>",
+    "</h4>",
+    "</h5>",
+)
+NEXT_BLOCK = ("<a ", "<li", "<p ", "<p>", "<div", "<dd", "<tr")
+
+
+def nearby_text(html: str, match, title: str) -> str:
+    """Text that may carry THIS link's clock.
+
+    Looks before and after the anchor. The before-window is cut at the last block
+    boundary so a previous item's timestamp cannot be borrowed. The after-window
+    stops at the next block so clocks written after the title are still found.
+    """
+    start, end = match.start(), match.end()
+    before = html[max(0, start - 160) : start]
+    cuts = [before.rfind(tag) for tag in BLOCK_END]
+    cut = max(cuts)
+    if cut >= 0:
+        before = before[cut:]
+    after = html[end : end + 160]
+    stops = [after.find(tag) for tag in NEXT_BLOCK]
+    stops = [item for item in stops if item >= 0]
+    if stops:
+        after = after[: min(stops)]
+    return f"{before} {title} {after}"
+
+
 def links_from_html(html: str, base: str, ledger: str, source: str, cursor: str = "") -> list[dict]:
     rows = []
     seen: set[str] = set()
@@ -106,10 +144,7 @@ def links_from_html(html: str, base: str, ledger: str, source: str, cursor: str 
             continue
         if not any(token in url for token in ("/2026", "detail_", "t2026")):
             continue
-        prefix = html[max(0, match.start() - 80) : match.start()]
-        if "</a>" in prefix:
-            prefix = prefix.rsplit("</a>", 1)[-1]
-        nearby = prefix + " " + title
+        nearby = nearby_text(html, match, title)
         status = classify_link(title, url, nearby, ledger, cursor=cursor)
         if status is None:
             continue
@@ -136,6 +171,11 @@ def pack(rows: list[dict], open_limit: int | None = None) -> dict:
     opening = sorted((row for row in rows if row["status"] == "待打开"), key=newer, reverse=True)
     gap = sorted((row for row in rows if row["status"] == "缺口"), key=newer, reverse=True)
     same = [row for row in rows if row["status"] == "同一事实已记"]
+    comments = [
+        {"source": row.get("source"), "title": row.get("title"), "url": row.get("url")}
+        for row in rows
+        if row["status"] == "不进W1–W5"
+    ]
     undated = [row for row in rows if row["status"] == "无发布时间"]
     sector_undated = [row for row in undated if row.get("sector")]
     if open_limit is not None:
@@ -148,19 +188,36 @@ def pack(rows: list[dict], open_limit: int | None = None) -> dict:
         "gap": gap_out,
         "gap_left": max(0, len(gap) - len(gap_out)),
         "same_fact": same,
-        "comment_skipped": sum(1 for row in rows if row["status"] == "不进W1–W5"),
+        "comments": comments,
+        "comment_skipped": len(comments),
+        "undated": undated,
         "undated_count": len(undated),
         "undated_sector": sector_undated,
     }
 
 
+MONEY_RE = re.compile(r"\d[\d,]*(?:\.\d+)?\s*(?:亿(?:元)?|万(?:元)?|元|％|%|个百分点|点)")
+MOVE_RE = re.compile(
+    r"(?:上涨|下跌|涨幅|降幅|高开|低开|收于|收报|升至|降至|报|涨|跌)\D{0,10}\d[\d,]*(?:\.\d+)?"
+)
+
+
 def article_fact(html: str) -> str:
-    """One sentence from the page. The raw page stays out of the conversation."""
+    """One sentence from the page. The raw page stays out of the conversation.
+
+    Prefer a body number carrying money/percent/index units so a page-header
+    date (2026-11-12) is not mistaken for the close or profit.
+    """
     text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", html)
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
-    found = re.search(r".{0,40}\d[\d\.％%年月日亿万点元].{0,100}", text)
-    snippet = found.group(0) if found else text[:120]
+    anchor = MONEY_RE.search(text) or MOVE_RE.search(text)
+    if anchor:
+        start = max(0, anchor.start() - 30)
+        end = min(len(text), anchor.end() + 80)
+        snippet = text[start:end].strip()
+    else:
+        snippet = text[:120]
     return snippet[:160]
 
 
@@ -188,7 +245,8 @@ def _cursor(ledger: str) -> str:
 
 def main() -> int:
     ledger = LEDGER.read_text(encoding="utf-8") if LEDGER.exists() else ""
-    cursor = _cursor(ledger)
+    # Prefer the portable cursor; fall back to the machine-local ledger.
+    cursor = portable_cursor() or _cursor(ledger)
     rows: list[dict] = []
     mounts = []
     for source, url, base in PAGES:
@@ -207,6 +265,9 @@ def main() -> int:
                 continue
             title = item.get("title") or ""
             if any(word in title for word in COMMENT_WORDS):
+                # Keep the title; commentary is visible but never enters weights.
+                item["status"] = "不进W1–W5"
+                overseas.append(item)
                 continue
             if url and url not in ledger and not _id_in_text(url, ledger):
                 overseas.append(item)

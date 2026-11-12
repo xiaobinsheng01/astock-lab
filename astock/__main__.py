@@ -26,6 +26,7 @@ COMMANDS = {
     "cfbond": "astock.cfbond_feed",
     "cninfo": "astock.cninfo_feed",
     "cash": "astock.cash_close",
+    "state": "astock.state",
 }
 
 

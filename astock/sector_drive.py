@@ -12,6 +12,8 @@ import sys
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from astock.close_inputs import favored_path
+
 EXCESS_PP = 1.0
 CAP_YI = 800.0
 NEAR = 0.03
@@ -736,26 +738,124 @@ def self_check() -> int:
     return failed
 
 
+INDEX_QUOTE_CODES = (
+    "sh000001",
+    "sh000685",
+    "sz399811",
+    "sz399389",
+    "sh000993",
+)
+
+
+def live_index_quotes() -> dict:
+    """Current index quotes from the same public source as the close reader."""
+    raw = _fetch(
+        "https://qt.gtimg.cn/q=" + ",".join(INDEX_QUOTE_CODES)
+    ).decode("gbk", "replace")
+    out: dict[str, dict] = {}
+    for chunk in raw.split(";"):
+        if "~" not in chunk:
+            continue
+        parts = chunk.split('"', 1)[-1].split("~")
+        if len(parts) < 35:
+            continue
+        out[parts[2]] = {
+            "name": parts[1].replace(" ", ""),
+            "px": _num(parts[3]),
+            "prev": _num(parts[4]),
+            "pct": _num(parts[32]),
+            "high": _num(parts[33]),
+            "low": _num(parts[34]),
+            "ts": parts[30],
+        }
+    return out
+
+
+def index_daily(key: str) -> list[tuple]:
+    """Recent (date, close, high) bars for an index. Empty when no host answers."""
+    url = f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={key},day,,,12,qfq"
+    try:
+        payload = json.loads(_fetch(url).decode("utf-8", "replace"))
+    except Exception:  # noqa: BLE001 — a dead index stays without bars
+        return []
+    series = (payload.get("data") or {}).get(key) or {}
+    bars = series.get("qfqday") or series.get("day") or []
+    out = []
+    for bar in bars:
+        if len(bar) < 4:
+            continue
+        close = _num(bar[2])
+        high = _num(bar[3])
+        if close is None or high is None:
+            continue
+        out.append((str(bar[0]), close, high))
+    return out
+
+
+def live_screen(held: set[str], us: dict) -> dict:
+    """Build the drive list from the live session instead of a fixed sample."""
+    q = live_index_quotes()
+    sh = q.get("000001") or {}
+    ts = sh.get("ts") or ""
+    if not ts or len(ts) < 8:
+        return {"status": "未挂", "text": "上证现价取不到，不印发力名单"}
+    session = f"{ts[0:4]}-{ts[4:6]}-{ts[6:8]}"
+    bars = index_daily("sh000001")
+    path = "not_forced"
+    prior_high = None
+    if bars:
+        if bars[-1][0] == session:
+            # During/after the live session: prior high is the previous bar.
+            session_high = bars[-1][2]
+            if len(bars) >= 2:
+                prior_high = bars[-2][2]
+            prev_close_above = (
+                len(bars) >= 3 and bars[-2][1] > bars[-3][2]
+            )
+        else:
+            # Before the open: the last bar is the prior session.
+            session_high = None
+            prior_high = bars[-1][2]
+            prev_close_above = len(bars) >= 2 and bars[-1][1] > bars[-2][2]
+        if prior_high is not None:
+            path = favored_path(
+                prior_high,
+                session_high,
+                prev_close_above,
+                False,
+                False,
+            )
+    pcts = {code: (q.get(code) or {}).get("pct") for code in ("000685", "399811", "399389", "000993")}
+    result = screen(path, pcts, sh.get("pct"), held, us, session)
+    result["session"] = session
+    result["path"] = path
+    result["clock"] = ts
+    if path not in GROWTH_PATHS:
+        result["note"] = f"{session} 主路径为 {path}，不印发力名单"
+    return result
+
+
 def main() -> int:
     if "--self-check" in sys.argv:
         failed = self_check()
         print("failed", failed)
         return 1 if failed else 0
-    trade_date = "2026-11-04"
-    if "--trade-date" in sys.argv:
-        trade_date = sys.argv[sys.argv.index("--trade-date") + 1]
     held = set()
     if "--held" in sys.argv:
         held = {item for item in sys.argv[sys.argv.index("--held") + 1].split(",") if item}
     us = {"growth": "split", "hot": [], "cold": [], "session": "pending"}
     if "--us-json" in sys.argv:
         us = json.loads(sys.argv[sys.argv.index("--us-json") + 1])
-    result = screen("above_prior_high", {
-        "000685": 12.61,
-        "399811": 10.91,
-        "399389": 5.29,
-        "000993": 8.81,
-    }, 2.16, held, us, trade_date)
+    if "--sample" in sys.argv:
+        # Explicit replay of the documented 2026-11-04 session.
+        result = screen("above_prior_high", {
+            "000685": 12.61,
+            "399811": 10.91,
+            "399389": 5.29,
+            "000993": 8.81,
+        }, 2.16, held, us, "2026-11-04")
+    else:
+        result = live_screen(held, us)
     json.dump(result, sys.stdout, ensure_ascii=False, default=str)
     sys.stdout.write("\n")
     return 0
