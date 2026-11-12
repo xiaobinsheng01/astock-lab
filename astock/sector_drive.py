@@ -295,10 +295,11 @@ def assign_names(sectors: list[dict], members: dict[str, list[dict]]) -> dict[st
             code = row["code"]
             if code in taken or not main_board(code):
                 continue
-            if cap_ok(row.get("cap_yi")) != "pass":
+            cap = cap_ok(row.get("cap_yi"))
+            if cap == "fail":
                 continue
             taken.add(code)
-            rows.append(row)
+            rows.append({**row, "cap": cap})
         out[item["index"]] = rows
     return out
 
@@ -336,13 +337,11 @@ def _line_key(gap) -> tuple:
 
 
 def recommend(rows: list[dict], held: set[str]) -> dict:
-    """Pass the entry gates. Earnings is recorded and only affects sort order."""
+    """Pass the entry gates. Earnings and holder structure are recorded, not gates."""
     passed = []
     held_aside = []
     for row in rows:
         if row.get("near") != "pass":
-            continue
-        if row.get("holder") != "simple":
             continue
         if row["code"] in held:
             held_aside.append(row)
@@ -599,7 +598,10 @@ def self_check() -> int:
     ))
     check("missing stays unchecked", drive_sectors("upper_half_up", {}, 2.16)[0]["state"] == "unchecked")
     check("main board", main_board("002371") and main_board("600330") and not main_board("300750") and not main_board("688981"))
-    check("cap", cap_ok(799.99) == "pass" and cap_ok(800) == "fail" and cap_ok(None) == "unchecked")
+    check(
+        "cap",
+        cap_ok(799.99) == "pass" and cap_ok(800) == "fail" and cap_ok(None) == "unchecked" and cap_ok(0) == "unchecked",
+    )
     closes = [10] * 9 + [10.2]
     near = near_ma(closes)
     check("near either line", near["state"] == "pass" and near["dist5"] <= NEAR)
@@ -710,14 +712,24 @@ def self_check() -> int:
     note = us_note(INDUSTRIES[0], "split", {"XLK", "XLC"}, {"SMH", "SOXX", "XLE"}, "intraday")
     check("split keeps a note", "不确认" in note and "待收盘" in note)
     members = {
-        "pt01801081": [{"code": "002371", "cap_yi": 100}, {"code": "688981", "cap_yi": 100}],
-        "pt01801080": [{"code": "002371", "cap_yi": 100}, {"code": "000100", "cap_yi": 900}, {"code": "002415", "cap_yi": 200}],
+        "pt01801081": [{"code": "002371", "cap_yi": 100}, {"code": "688981", "cap_yi": 100}, {"code": "002156", "cap_yi": None}],
+        "pt01801080": [
+            {"code": "002371", "cap_yi": 100},
+            {"code": "000100", "cap_yi": 900},
+            {"code": "002415", "cap_yi": 200},
+            {"code": "000021", "cap_yi": None},
+            {"code": "000022", "cap_yi": 0},
+            {"code": "000023", "cap_yi": 800},
+        ],
         "pt01801770": [{"code": "600498", "cap_yi": 150}],
         "pt01801750": [{"code": "002371", "cap_yi": 100}, {"code": "600570", "cap_yi": 300}],
     }
     assigned = assign_names(drive, _without_child(members, drive))
-    check("chip keeps main board", [row["code"] for row in assigned["000685"]] == ["002371"])
-    check("electronics drops the chip and the large cap", [row["code"] for row in assigned["399811"]] == ["002415"])
+    check("chip keeps a missing cap", [row["code"] for row in assigned["000685"]] == ["002371", "002156"])
+    check(
+        "electronics drops the large cap and keeps a missing cap",
+        [row["code"] for row in assigned["399811"]] == ["002415", "000021", "000022"],
+    )
     check("info drops a code already taken", [row["code"] for row in assigned["000993"]] == ["600570"])
     sample = [
         {"code": "600001", "industry": "CSSW电子", "near": "pass", "holder": "simple", "earnings": "pass", "gap": 0.02, "profit": 1, "profit_yoy": 1, "ma10_gap_pct": 1},
@@ -730,7 +742,18 @@ def self_check() -> int:
     picked = recommend(sample, {"002081"})
     check(
         "industry then profit then the 10-day line",
-        [row["code"] for row in picked["names"]] == ["600004", "600005", "600002", "600001"],
+        [row["code"] for row in picked["names"]] == ["600004", "600003", "600005", "600002", "600001"],
+    )
+    loose = recommend(
+        [
+            {"code": "600012", "industry": "国证通信", "near": "pass", "holder": "complex", "ma10_gap_pct": 1},
+            {"code": "600013", "industry": "国证通信", "near": "pass", "holder": "unchecked", "ma10_gap_pct": 1},
+        ],
+        set(),
+    )
+    check(
+        "holder structure does not remove a name",
+        [row["code"] for row in loose["names"]] == ["600012", "600013"],
     )
     check("held aside", [row["code"] for row in picked["held_aside"]] == ["002081"])
     return failed
