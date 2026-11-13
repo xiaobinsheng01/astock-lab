@@ -93,10 +93,36 @@ def cap_ok(cap_yi) -> str:
     return "fail"
 
 
+def ma20_mark(closes: list[float], price) -> dict:
+    """Where the close sits versus the 20-day line. Position only, never a filter."""
+    px = _num(price)
+    if px is None or px <= 0:
+        px = _num(closes[-1]) if closes else None
+    if (
+        px is None
+        or px <= 0
+        or len(closes) < 20
+        or any(item is None or item <= 0 for item in closes[-20:])
+    ):
+        return {"ma20": None, "ma20_gap_pct": None, "ma20_word": "未核"}
+    average = sum(closes[-20:]) / 20.0
+    gap = ma10_gap_pct(px, average)
+    if gap is None:
+        word = "未核"
+    elif gap < 0:
+        word = "上方"
+    elif gap > 0:
+        word = "下方"
+    else:
+        word = "贴着"
+    return {"ma20": average, "ma20_gap_pct": gap, "ma20_word": word}
+
+
 def near_ma(closes: list[float]) -> dict:
     """Either the 5-day or the 10-day average may sit within 3%. Both are not required."""
+    marked = ma20_mark(closes, closes[-1] if closes else None)
     if len(closes) < 10 or any(px is None or px <= 0 for px in closes[-10:]):
-        return {"state": "unchecked", "ma5": None, "ma10": None, "gap": None}
+        return {"state": "unchecked", "ma5": None, "ma10": None, "gap": None, **marked}
     last = closes[-10:]
     ma5 = sum(last[-5:]) / 5.0
     ma10 = sum(last) / 10.0
@@ -112,6 +138,7 @@ def near_ma(closes: list[float]) -> dict:
         "dist10": dist10,
         "gap": gap,
         "close": last[-1],
+        **marked,
     }
 
 
@@ -528,6 +555,9 @@ def screen(path: str, pcts: dict, shanghai_pct, held: set[str], us: dict, trade_
         row["gap"] = stats["gap"]
         row["ma5"] = stats["ma5"]
         row["ma10"] = stats["ma10"]
+        row["ma20"] = stats.get("ma20")
+        row["ma20_gap_pct"] = stats.get("ma20_gap_pct")
+        row["ma20_word"] = stats.get("ma20_word") or "未核"
         row["close"] = stats["close"]
         row["pct"] = prior_pct(series, trade_date)
         row["rise"] = rise_amount(series, trade_date)
@@ -649,6 +679,15 @@ def self_check() -> int:
     above = ma10_gap_pct(13.36, 13.358)
     check("already above the 10-day line", above is not None and above < 0)
     check("gap missing", ma10_gap_pct(None, 10) is None)
+    below_ma20 = near_ma([100] * 10 + [10] * 10)
+    check(
+        "20-day line does not change the 5-day and 10-day gate",
+        below_ma20["state"] == "pass" and below_ma20["ma20_word"] == "下方",
+    )
+    on_ma20 = near_ma([10] * 20)
+    check("flat 20-day line is touching", on_ma20["ma20_word"] == "贴着" and on_ma20["state"] == "pass")
+    short_ma20 = near_ma([10] * 12)
+    check("fewer than 20 closes leaves the 20-day line unchecked", short_ma20["ma20_word"] == "未核")
     wide = recommend(
         [
             {"code": f"60000{i}", "near": "pass", "holder": "simple", "earnings": "pass", "gap": i / 100}
