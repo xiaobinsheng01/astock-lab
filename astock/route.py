@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Print which window this turn uses. No fetch, no score, no order.
 
-The analysis window reads snapshots that the data window already stored.
-It does not ask whether to fetch, and it does not open the article text.
+终分、初分、盘中 are one round: judge the info increment, store the
+hot layer, then write that round. 快评、研报、妖股 and an unnamed ask do
+not fetch. A standalone 资料面 increment only advances the cursor.
 """
 
 from __future__ import annotations
@@ -34,6 +35,18 @@ def _slot(at: datetime, ask: str) -> str:
     return "10:00"
 
 
+def _fill(row: dict, *, window: str, name: str, read: str, run: str, missing: str, closed: str, write: str = "", holding: str = "") -> dict:
+    row["窗口"] = window
+    row["轮次"] = name
+    row["读"] = read
+    row["跑"] = run
+    row["写"] = write
+    row["缺快照"] = missing
+    row["不打开"] = closed
+    row["持仓"] = holding
+    return row
+
+
 def plan(at: str, ask: str) -> dict:
     """Return the route row for one utterance. `at` is Beijing time."""
     clock = _clock(at)
@@ -45,6 +58,7 @@ def plan(at: str, ask: str) -> dict:
         "北京时间": stamp,
         "读": "",
         "跑": "无",
+        "写": "",
         "缺快照": "未跑",
         "不打开": "原文、总结模型、补抓",
         "持仓": "",
@@ -69,27 +83,51 @@ def plan(at: str, ask: str) -> dict:
         row["不打开"] = "原文、总结模型、补抓、三支全扫"
         return row
     if "终分" in text:
-        row["轮次"] = "终分"
-        row["读"] = "硬门、终分、预测、发力、缠论、热层快照"
-        return row
+        return _fill(
+            row,
+            window="本轮",
+            name="终分",
+            read="硬门、终分、预测、发力、缠论、热层快照",
+            run="news、close、drive、a50、cash、bars",
+            write="results/日期-终分.json；写上之后归档",
+            missing="未挂",
+            closed="原文全文、总结模型、不询问采集",
+        )
     if "初分" in text:
-        row["轮次"] = "初分"
-        row["读"] = "硬门、初分、预测、今日关注、缠论、热层快照"
-        row["持仓"] = "没提供就写待提供"
-        return row
+        return _fill(
+            row,
+            window="本轮",
+            name="初分",
+            read="硬门、初分、预测、今日关注、收盘对照、缠论、热层快照",
+            run="news、close、cninfo、bars",
+            write="results/日期-对照.json、今日关注",
+            missing="未挂",
+            closed="原文全文、总结模型、不询问采集",
+            holding="没提供就写待提供",
+        )
     if "盘中" in text:
-        row["轮次"] = f"盘中 {_slot(clock, text)}"
-        row["读"] = "硬门、盘中分析、持仓、路径、热层快照"
-        return row
+        slot = _slot(clock, text)
+        stamp_slot = slot.replace(":", "")
+        return _fill(
+            row,
+            window="本轮",
+            name=f"盘中 {slot}",
+            read="硬门、盘中分析、持仓、路径、热层快照",
+            run="news、brief、screen、bars",
+            write=f"results/日期-盘中-{stamp_slot}.json",
+            missing="未挂",
+            closed="原文全文、总结模型、不询问采集",
+        )
     if any(word in text for word in ("取数", "资料面", "取行情", "补缺口")):
-        row["窗口"] = "取数"
-        row["轮次"] = "资料面"
-        row["读"] = "热层写入位置"
-        row["跑"] = "news、close、drive、brief、screen、a50、cctv、cfbond、cninfo、cash"
-        row["缺快照"] = "未挂"
-        row["不打开"] = "五行、主仓重算、妖股分档"
-        row["持仓"] = ""
-        return row
+        return _fill(
+            row,
+            window="取数",
+            name="资料面",
+            read="资料面增量、当轮使用",
+            run="news",
+            missing="未挂",
+            closed="五行、主仓重算、妖股分档",
+        )
     row["轮次"] = "未识别"
     row["读"] = "无"
     row["缺快照"] = "未跑"
@@ -103,12 +141,13 @@ def format_plan(row: dict) -> str:
         f"北京时间: {row['北京时间']}",
         f"读: {row['读']}",
         f"跑: {row['跑']}",
+        f"写: {row['写']}" if row.get("写") else "",
         f"缺快照: {row['缺快照']}",
         f"不打开: {row['不打开']}",
     ]
     if row["持仓"]:
         lines.append(f"持仓: {row['持仓']}")
-    return "\n".join(lines)
+    return "\n".join(line for line in lines if line)
 
 
 def main(argv: list[str] | None = None) -> int:
