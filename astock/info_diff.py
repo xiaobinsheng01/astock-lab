@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Diff official list pages against the ledger. Print only what this window might open.
 
-The ledger stays on disk. A known address is not printed again. A title with no
-clock is not marked for opening. This does not score, does not write the ledger,
-and does not place an order.
+The ledger file stays where it is. A known address is not printed again. A title
+with no clock is still listed, and is not marked for opening. Titles are not
+dropped for a sensitive word. This does not score and does not place an order.
+Seen addresses and the cursor are written under runtime/lake so the next run
+can see them.
 """
 
 from __future__ import annotations
@@ -15,14 +17,14 @@ import urllib.request
 
 from astock.overseas_feed import collect
 from astock.paths import LEDGER
-from astock.state import read_cursor as portable_cursor
+from astock.state import beijing_now, read_cursor, read_seen, remember_urls, write_cursor
 
 LINK_RE = re.compile(r"""<a[^>]+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)</a>""", re.I)
 URL_RE = re.compile(r"https?://[^\s|）<>\"']+")
 CLOCK_RE = re.compile(r"(20\d{2}-\d{2}-\d{2}[ T]\d{2}:\d{2}|\d{2}-\d{2}\s+\d{2}:\d{2})")
 DATE_RE = re.compile(r"20\d{2}[-/]\d{2}[-/]\d{2}")
 SECTOR_WORDS = ("电子", "芯片", "通信", "银行", "食品饮料", "煤炭")
-COMMENT_WORDS = ("访谈", "专访", "快评", "评论", "策略", "投资机构", "CEO", "基金经理", "首席", "综述", "券商")
+COMMENT_WORDS = ("访谈", "专访", "快评", "评论", "投资机构", "基金经理")
 COLLECT_START = "2026-11-03 09:00"
 
 PAGES = (
@@ -65,6 +67,13 @@ def _clock_text(clock: str, url: str) -> str:
     year = re.search(r"/(20\d{2})/", url)
     prefix = year.group(1) if year else "2026"
     return f"{prefix}-{found.group(1)}-{found.group(2)} {found.group(3)}:{found.group(4)}"
+
+
+def weight_for(status: str) -> str:
+    """待打开 can be cited. Commentary stays out of W1–W5. Nothing here changes the score."""
+    if status == "待打开":
+        return "待引用"
+    return status
 
 
 def classify_link(
@@ -156,6 +165,7 @@ def links_from_html(html: str, base: str, ledger: str, source: str, cursor: str 
                 "title": title[:48],
                 "url": url,
                 "status": status,
+                "weight": weight_for(status),
                 "clock": clock.group(1) if clock else "",
                 "sector": any(word in title for word in SECTOR_WORDS),
             }
@@ -245,8 +255,9 @@ def _cursor(ledger: str) -> str:
 
 def main() -> int:
     ledger = LEDGER.read_text(encoding="utf-8") if LEDGER.exists() else ""
+    known = ledger + "\n" + read_seen()
     # Prefer the portable cursor; fall back to the machine-local ledger.
-    cursor = portable_cursor() or _cursor(ledger)
+    cursor = read_cursor() or _cursor(known)
     rows: list[dict] = []
     mounts = []
     for source, url, base in PAGES:
@@ -255,7 +266,7 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001 — a dead list is a mount note, not a story
             mounts.append({"source": source, "url": url, "error": type(exc).__name__})
             continue
-        rows.extend(links_from_html(html, base, ledger, source, cursor=cursor))
+        rows.extend(links_from_html(html, base, known, source, cursor=cursor))
     overseas = []
     try:
         for item in collect(8):
@@ -269,12 +280,18 @@ def main() -> int:
                 item["status"] = "不进W1–W5"
                 overseas.append(item)
                 continue
-            if url and url not in ledger and not _id_in_text(url, ledger):
+            if url and url not in known and not _id_in_text(url, known):
                 overseas.append(item)
     except Exception as exc:  # noqa: BLE001
         mounts.append({"source": "overseas_feed", "error": type(exc).__name__})
     payload = pack(rows)
     attach_facts(payload["open"] + payload["gap"])
+    listed = [row.get("url") or "" for row in payload["open"]]
+    listed += [row.get("url") or "" for row in payload["comments"]]
+    listed += [item.get("url") or "" for item in overseas]
+    remember_urls(listed)
+    if not mounts:
+        write_cursor(beijing_now())
     payload["overseas_new"] = overseas
     payload["mounts"] = mounts
     payload["cursor"] = cursor

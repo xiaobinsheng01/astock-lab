@@ -8,15 +8,16 @@ import json
 import re
 import sys
 import urllib.request
+from datetime import datetime, timedelta, timezone
 
 PROGRAMS = ("第一时间", "正点财经", "交易时间", "天下财经", "经济信息联播")
-# Each finance program's own column page. The news-broadcast page is not opened.
-COLUMNS = (
-    ("第一时间", "https://tv.cctv.com/lm/dysj/"),
-    ("正点财经", "https://tv.cctv.com/lm/zdcj/"),
-    ("交易时间", "https://tv.cctv.com/lm/jysj/"),
-    ("天下财经", "https://tv.cctv.com/lm/hqcjlx/"),
-    ("经济信息联播", "https://tv.cctv.com/lm/jjxxll/"),
+# Column video API. The static column pages do not carry the current air time,
+# and the news-broadcast page is not opened. 交易时间 has no public column id.
+COLUMN_API = (
+    ("第一时间", "TOPC1451530259915198"),
+    ("正点财经", "TOPC1453100395512779"),
+    ("天下财经", "TOPC1451531385787654"),
+    ("经济信息联播", "TOPC1451533782742171"),
 )
 
 
@@ -62,15 +63,47 @@ def parse_program(html: str, program: str) -> dict:
     return {"program": program, "status": status, "items": items}
 
 
+def clock_from_focus(value) -> str:
+    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
+    if len(digits) < 13:
+        return ""
+    moment = datetime.fromtimestamp(int(digits[:13]) / 1000, timezone(timedelta(hours=8)))
+    return moment.strftime("%Y-%m-%d %H:%M")
+
+
+def programs_from_payload(program: str, payload: dict) -> dict:
+    items = ((payload or {}).get("data") or {}).get("list") or []
+    programs = []
+    for item in items[:5]:
+        title = str(item.get("title") or "").strip()
+        if not title:
+            continue
+        programs.append(
+            {
+                "program": program,
+                "title": title,
+                "clock": clock_from_focus(item.get("focus_date")),
+                "url": item.get("url") or "",
+            }
+        )
+    if not programs:
+        return {"program": program, "status": "栏目未挂", "items": []}
+    return {"program": program, "status": "已列", "items": programs}
+
+
 def fetch_columns() -> list[dict]:
-    """Open the five finance column pages. A dead column is 未挂, not skipped."""
+    """Open the finance column feeds. A dead column is 未挂, not skipped."""
     results = []
-    for program, url in COLUMNS:
+    for program, column_id in COLUMN_API:
+        url = (
+            "https://api.cntv.cn/NewVideo/getVideoListByColumn"
+            f"?id={column_id}&n=5&sort=desc&mode=0&serviceId=tvcctv"
+        )
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=12) as resp:
-                html = resp.read().decode("utf-8", "replace")
-            results.append(parse_program(html, program))
+                payload = json.loads(resp.read().decode("utf-8", "replace"))
+            results.append(programs_from_payload(program, payload))
         except Exception as exc:  # noqa: BLE001 — a dead column is 未挂
             results.append(
                 {
@@ -80,6 +113,14 @@ def fetch_columns() -> list[dict]:
                     "error": type(exc).__name__,
                 }
             )
+    results.append(
+        {
+            "program": "交易时间",
+            "status": "栏目未挂",
+            "items": [],
+            "text": "栏目页没有节目编号",
+        }
+    )
     return results
 
 

@@ -7,10 +7,23 @@ import argparse
 import json
 import sys
 import urllib.request
-from datetime import datetime, timedelta, timezone
 
 SINA_URL = "https://hq.sinajs.cn/list=hf_CHA50CFD"
-BEIJING = timezone(timedelta(hours=8))
+
+
+def parse_a50(body: str) -> dict:
+    """Sina hf line. Field 0 is the last price and field 7 is the prior settle.
+
+    Field 2 is the bid. Using it as the settle makes the night change look flat.
+    """
+    fields = body.split(",")
+    if len(fields) < 13 or not fields[0]:
+        return {"error": "NoPrice"}
+    clock = f"{fields[12]} {fields[6]}"
+    previous = fields[7]
+    if previous in ("", "0"):
+        return {"latest": fields[0], "previous": "", "clock": clock}
+    return {"latest": fields[0], "previous": previous, "clock": clock}
 
 
 def fetch_live() -> dict:
@@ -33,13 +46,7 @@ def fetch_live() -> dict:
     payload = raw.split('"', 1)
     if len(payload) < 2:
         return {"error": "EmptyPayload"}
-    fields = payload[1].split('"', 1)[0].split(",")
-    if len(fields) < 13 or not fields[0]:
-        return {"error": "NoPrice"}
-    latest = fields[0]
-    previous = fields[2]
-    clock = f"{fields[12]} {fields[6]}"
-    return {"latest": latest, "previous": previous, "clock": clock}
+    return parse_a50(payload[1].split('"', 1)[0])
 
 
 def assess(latest, previous, clock: str) -> dict:

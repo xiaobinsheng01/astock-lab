@@ -233,7 +233,9 @@ def screen(day: str) -> dict:
     for row in flat:
         series = bars.get(row["code"]) or []
         quote = quotes.get(row["code"]) or {}
-        if not series or series[-1][0] != day:
+        bar_day = "".join(ch for ch in str(series[-1][0]) if ch.isdigit())[:8] if series else ""
+        asked = "".join(ch for ch in day if ch.isdigit())[:8]
+        if not series or bar_day != asked:
             # Missing the current bar is "unchecked", never a silent zero.
             no_today[row["index"]].append(
                 {
@@ -370,7 +372,10 @@ def main() -> int:
             )
     print("判断结果")
     if not payload["passed"]:
-        print("无")
+        if payload["missing"] and not payload["opened"]:
+            print("日线未到当日，判断结果未核")
+        else:
+            print("无")
         return 0
     for row in payload["passed"]:
         for hit in row["holder"].get("hits") or []:

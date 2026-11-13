@@ -43,6 +43,25 @@ EARNINGS = ("营收", "净利润", "财报", "并购")
 EARNINGS_WHERE = ("美国", "美股", "纽约", "欧洲", "日本", "香港")
 # Overseas corporate / policy events that must not vanish from the desk.
 EVENT = ("人事", "管制", "制裁", "停产", "指引")
+# Specific enough to keep even when the title never says 公司 or names a market.
+SENSITIVE = (
+    "CEO",
+    "首席执行官",
+    "首席财务官",
+    "辞任",
+    "换帅",
+    "出口管制",
+    "实体清单",
+    "制裁",
+    "禁令",
+    "关税",
+    "停产",
+    "停工",
+    "罢工",
+    "事故",
+    "资本开支",
+    "业绩指引",
+)
 
 LINK_RE = re.compile(
     r"""<a[^>]+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)</a>""",
@@ -60,6 +79,8 @@ def classify(title: str) -> str | None:
     )
     if election:
         return "election_result"
+    if any(word in title for word in SENSITIVE):
+        return "event"
     if any(word in title for word in MARKET) or (
         "股市" in title and any(word in title for word in MARKET_PLACE)
     ):
