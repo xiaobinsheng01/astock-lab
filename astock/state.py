@@ -14,7 +14,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from astock.paths import CURSOR_FILE, WEIGHTS_FILE
+from astock.paths import CURSOR_FILE, SEEN_FILE, WEIGHTS_FILE
 
 BEIJING = timezone(timedelta(hours=8))
 WEIGHT_KEYS = ("W1", "W2", "W3", "W4", "W5")
@@ -41,13 +41,39 @@ def read_cursor() -> str:
     return str(_load(CURSOR_FILE, {}).get("cursor") or "")
 
 
-def write_cursor(cursor: str, *, force: bool = False) -> dict:
+def write_cursor(cursor: str, *, force: bool = False, path: Path | None = None) -> dict:
     """Advance the cursor. It only moves forward unless `force` is set."""
-    current = read_cursor()
+    target = path or CURSOR_FILE
+    current = str(_load(target, {}).get("cursor") or "")
     if current and cursor < current and not force:
         return {"status": "未推进", "cursor": current, "asked": cursor}
-    _dump(CURSOR_FILE, {"cursor": cursor, "updated_at": beijing_now()})
+    _dump(target, {"cursor": cursor, "updated_at": beijing_now()})
     return {"status": "已推进", "cursor": cursor, "previous": current}
+
+
+def read_seen(path: Path | None = None) -> str:
+    target = path or SEEN_FILE
+    if not target.exists():
+        return ""
+    return target.read_text(encoding="utf-8")
+
+
+def remember_urls(urls: list[str], path: Path | None = None) -> int:
+    """Append addresses that were listed. A new machine reads the same file."""
+    target = path or SEEN_FILE
+    existing = {line.strip() for line in read_seen(target).splitlines() if line.strip()}
+    fresh: list[str] = []
+    for url in urls:
+        url = (url or "").strip()
+        if url and url not in existing and url not in fresh:
+            fresh.append(url)
+    if not fresh:
+        return 0
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("a", encoding="utf-8") as handle:
+        for url in fresh:
+            handle.write(url + "\n")
+    return len(fresh)
 
 
 def beijing_now() -> str:

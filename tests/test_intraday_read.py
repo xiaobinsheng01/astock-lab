@@ -6,6 +6,7 @@ from __future__ import annotations
 import unittest
 
 from astock.info_diff import article_fact, classify_link, links_from_html, pack
+from astock.state import remember_urls, write_cursor
 from astock.intraday_brief import pair, path_text, segment
 from astock.intraday_screen import assign, both_averages, judge_holders
 
@@ -95,6 +96,24 @@ class DiffTest(unittest.TestCase):
         self.assertNotIn("aaaaaaaaaaaaaaaaaaaa", statuses)
         self.assertEqual(statuses["bbbbbbbbbbbbbbbbbbbb"], "待打开")
         self.assertEqual(statuses["cccccccccccccccccccc"], "无发布时间")
+
+    def test_a_ceo_title_and_a_clock_after_the_link_stay_open(self) -> None:
+        self.assertEqual(
+            classify_link(
+                "英伟达被爆：正考虑更换CEO",
+                "https://www.news.cn/fortune/20261114/eeeeeeeeeeeeeeeeeeee/c.html",
+                "11-14 08:30",
+                "",
+            ),
+            "待打开",
+        )
+        html = (
+            '<a href="/fortune/20261114/eeeeeeeeeeeeeeeeeeee/c.html">'
+            "英伟达被爆：正考虑更换CEO</a> 11-14 08:30"
+        )
+        rows = links_from_html(html, "https://www.news.cn", "", "新华网")
+        self.assertEqual(rows[0]["status"], "待打开")
+        self.assertEqual(rows[0]["weight"], "待引用")
         self.assertFalse(any(row["url"].endswith("index.html") for row in rows))
 
     def test_commentary_and_older_clocks_are_not_this_window(self) -> None:
@@ -161,6 +180,22 @@ class DiffTest(unittest.TestCase):
         fact = article_fact(html)
         self.assertIn("1425", fact)
         self.assertNotIn("<p>", fact)
+
+    def test_seen_addresses_and_the_cursor_move_with_a_file(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            seen = root / "seen-urls.txt"
+            self.assertEqual(remember_urls(["https://www.news.cn/a", "https://www.news.cn/a", ""], seen), 1)
+            self.assertEqual(remember_urls(["https://www.news.cn/a"], seen), 0)
+            cursor = root / "cursor.json"
+            first = write_cursor("2026-11-14 08:00", path=cursor)
+            self.assertEqual(first["status"], "已推进")
+            held = write_cursor("2026-11-14 07:00", path=cursor)
+            self.assertEqual(held["status"], "未推进")
+            self.assertEqual(held["cursor"], "2026-11-14 08:00")
 
 
 if __name__ == "__main__":

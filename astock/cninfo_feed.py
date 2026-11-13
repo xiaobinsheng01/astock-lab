@@ -28,8 +28,9 @@ def read_announcements(rows: list[dict], *, with_org: bool, code: str = "") -> d
             "secCode": row_code,
             "secName": row.get("secName") or "",
         }
-        # A query may answer with a different company's paper. It is not this stock.
-        if code_digits and row_code and row_code != code_digits:
+        # A query may answer with another company, or with no code at all.
+        # Neither is written as an announcement for the stock that was asked.
+        if code_digits and row_code != code_digits:
             other.append(entry)
             continue
         items.append(entry)

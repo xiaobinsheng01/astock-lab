@@ -45,6 +45,12 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(classify("苹果公司财报营收"), None)
         self.assertEqual(classify("美国公司财报营收同比增长"), "earnings")
 
+    def test_sensitive_company_events_stay(self) -> None:
+        self.assertEqual(classify("英伟达被爆：正考虑更换CEO"), "event")
+        self.assertEqual(classify("美方扩大出口管制"), "event")
+        self.assertEqual(classify("某工厂停产"), "event")
+        self.assertIsNone(classify("人事"))
+
     def test_fixture_order_and_dedupe(self) -> None:
         rows = items_from_html(FIXTURE, "world")
         self.assertEqual(
