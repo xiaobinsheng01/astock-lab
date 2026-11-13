@@ -1,27 +1,50 @@
 {
-  "采集": "2026-11-12 06:34",
-  "游标": "2026-11-12 06:34",
-  "上一游标": "2026-11-11 21:12",
-  "国内带时分新稿": 0,
+  "采集": "2026-11-13 08:09",
+  "游标": "2026-11-13 08:09",
+  "上一游标": "2026-11-12 06:34",
+  "国内带时分新稿": 6,
   "缺口": 0,
-  "无发布时间": 226,
-  "评论跳过": 5,
+  "无发布时间": 244,
+  "评论跳过": 7,
+  "国内已处理": [
+    "https://www.cs.com.cn/xwzx/08/2026/11/13/detail_2026111310051883.html",
+    "https://www.cs.com.cn/esg/2026/11/12/detail_2026111210051715.html",
+    "https://www.cs.com.cn/ssgs/01/2026/11/12/detail_2026111210051624.html",
+    "https://www.cs.com.cn/tzjj/01/2026/11/12/detail_2026111210051616.html",
+    "https://www.cs.com.cn/gppd/gsyj/2026/11/12/detail_2026111210051614.html",
+    "https://www.cs.com.cn/zzqh2020/2026/11/12/detail_2026111210051613.html"
+  ],
   "外围已打开": [
-    "https://www.news.cn/fortune/20261112/4140d9c06d2c481f8d8a5c518cce5252/c.html",
-    "https://www.news.cn/fortune/20261112/33df36f1f2294ac9bdc0be7082d9bad2/c.html",
-    "https://www.news.cn/fortune/20261112/af115a42f61f40d3b70ee1aa8aa84fd1/c.html",
-    "https://www.news.cn/fortune/20261112/7c6e6eb837b94d299c625b76d8452f73/c.html"
+    "https://www.news.cn/fortune/20261113/e145c7ed50344585a8eeb70a6e0e7bac/c.html",
+    "https://www.news.cn/fortune/20261113/819795d6a6324348a1d22fba80f8a51e/c.html",
+    "https://www.news.cn/fortune/20261113/326d332c72b6435ba631943a7eb344e1/c.html",
+    "https://www.news.cn/fortune/20261113/c289e85afa754ee9acb45a8831876696/c.html"
+  ],
+  "无时分点名板块": [
+    "国芯科技车规芯片累计出货量突破4000万颗 中高端芯片产品加速放量 https://www.cs.com.cn/ssgs/01/2026/11/12/detail_2026111210051707.html",
+    "午评：科创50指数涨2.35% 算力芯片、CPO概念股活跃 https://www.cs.com.cn/gppd/gsyj/2026/11/12/detail_2026111210051725.html",
+    "公募调研新动向浮现 电子、医药生物、机械设备行业获青睐 https://www.cs.com.cn/tzjj/01/2026/11/12/detail_2026111210051718.html",
+    "江苏银行：行长任职资格获监管机构核准 https://www.cs.com.cn/yh/04/2026/11/10/detail_2026111010051198.html",
+    "碳中和CDS指数落地银行间市场 https://www.cs.com.cn/esg/2026/11/02/detail_2026110210049021.html",
+    "关于印发《煤炭工业发展“十五五”规划》的通知(发改能源〔2026〕979号) https://www.ndrc.gov.cn/202608/t20260810_1406952.html",
+    "国家发展改革委 国家能源局有关负责同志就《煤炭工业发展“十五五”规划》答记者问 https://www.ndrc.gov.cn/jd/jd/202608/t20260810_1406951.html"
   ],
   "中国财富网": {
     "状态": "未挂",
-    "错误": "HTTP 514",
+    "错误": "HTTPError",
     "地址": "https://www.cfbond.com/zgcfw/ejy/yw/list.shtml"
   },
   "央视脚本": {
-    "状态": "栏目未挂",
-    "地址": "https://tv.cctv.com/lm/xwlb/index.shtml"
+    "状态": "栏目页已打开，新日期条目未挂",
+    "地址": [
+      "https://tv.cctv.com/lm/dysj/",
+      "https://tv.cctv.com/lm/zdcj/",
+      "https://tv.cctv.com/lm/jysj/",
+      "https://tv.cctv.com/lm/hqcjlx/",
+      "https://tv.cctv.com/lm/jjxxll/"
+    ]
   },
-  "交易时间": "栏目页已打开，没有栏目编号，列表未挂",
-  "巨潮": "按代码返回的证券简称与昊华科技、烽火通信、有研新材、中瓷电子、中航光电对不上。简称检索 HTTP 500。不写成没发公告。",
-  "行为分": "仍是 0.36，本轮不重算"
+  "巨潮": "按代码查询昊华科技、烽火通信、有研新材、中瓷电子、中航光电，返回行是别的公司，不写成没发公告。",
+  "行为分": "仍是 0.36，本轮不重算",
+  "当轮使用": "没有新华社通稿、发改委、央视已播出或中国财富网原文里的新官方数字进入 W1、W2、W4、W5。外围收盘待9:00。"
 }
