@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
 from astock.close_inputs import CODES
-from astock.route import format_plan, plan
+from astock.route import apply_empty_stop, format_plan, plan
 
 FORBIDDEN = ("是否取数", "Buy", "Overweight", "Hold", "Underweight", "Sell")
 
@@ -53,6 +55,46 @@ class RouteTest(unittest.TestCase):
 
     def test_quote_basket_includes_information_index(self) -> None:
         self.assertIn("sh000993", CODES)
+
+    def test_broad_market_stays_in_the_analysis_window(self) -> None:
+        row = plan("2026-11-11 00:01", "大盘分析")
+        self.assertEqual(row["窗口"], "分析")
+        self.assertEqual(row["轮次"], "大盘")
+        self.assertEqual(row["跑"], "无")
+        self.assertNotIn("停写", row)
+
+    def test_empty_desk_stops_before_the_path(self) -> None:
+        root = Path("/tmp/astock-empty-desk-missing")
+        for ask in ("大盘分析", "预判", "盘中"):
+            row = apply_empty_stop(plan("2026-11-11 00:01", ask), root)
+            text = format_plan(row)
+            self.assertEqual(row["停写"], "是")
+            self.assertEqual(row["读"], "无")
+            self.assertIn(
+                "原因: info_diff、intraday_brief、intraday_screen 未跑，热层快照未挂，资料面记录未挂",
+                text,
+            )
+            self.assertIn("操作: 停写。不补抓。不问要不要取数。", text)
+            for word in FORBIDDEN:
+                self.assertNotIn(word, text)
+
+    def test_empty_stop_waits_for_both_stores_to_be_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "runtime" / "info-ledger.md"
+            ledger.parent.mkdir(parents=True)
+            ledger.write_text("已挂\n", encoding="utf-8")
+            self.assertNotIn("停写", apply_empty_stop(plan("2026-11-11 00:01", "大盘分析"), root))
+            ledger.unlink()
+            quote = root / "runtime" / "lake" / "hot" / "quotes" / "2026-11-10.json"
+            quote.parent.mkdir(parents=True)
+            quote.write_text("{}\n", encoding="utf-8")
+            self.assertNotIn("停写", apply_empty_stop(plan("2026-11-11 00:01", "大盘分析"), root))
+
+    def test_empty_stop_skips_final_and_data_windows(self) -> None:
+        root = Path("/tmp/astock-empty-desk-missing")
+        self.assertNotIn("停写", apply_empty_stop(plan("2026-11-10 09:00", "终分"), root))
+        self.assertNotIn("停写", apply_empty_stop(plan("2026-11-10 15:15", "跑资料面"), root))
 
 
 if __name__ == "__main__":

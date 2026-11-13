@@ -10,6 +10,12 @@ from __future__ import annotations
 import argparse
 import sys
 from datetime import datetime
+from pathlib import Path
+
+from astock.paths import ROOT
+
+REASON = "info_diff、intraday_brief、intraday_screen 未跑，热层快照未挂，资料面记录未挂"
+OPERATION = "停写。不补抓。不问要不要取数。"
 
 
 def _clock(at: str) -> datetime:
@@ -90,10 +96,50 @@ def plan(at: str, ask: str) -> dict:
         row["不打开"] = "五行、主仓重算、妖股分档"
         row["持仓"] = ""
         return row
+    if any(word in text for word in ("预判", "走势", "板块波动", "大盘", "截图")):
+        row["轮次"] = "大盘"
+        row["读"] = "硬门、全天走势、发力板块、发力个股、对冲与托住、修复日、三类决策、个股四条路径、当轮使用"
+        row["跑"] = "无"
+        row["缺快照"] = "未跑"
+        return row
     row["轮次"] = "未识别"
     row["读"] = "无"
     row["缺快照"] = "未跑"
     return row
+
+
+def stores_missing(root: Path) -> bool:
+    """True when the hot layer has no snapshot and the ledger is absent."""
+    ledger = root / "runtime" / "info-ledger.md"
+    if ledger.is_file():
+        return False
+    hot = root / "runtime" / "lake" / "hot"
+    if not hot.exists():
+        return True
+    for path in hot.rglob("*"):
+        if path.is_file() and path.name != ".gitkeep":
+            return False
+    return True
+
+
+def apply_empty_stop(row: dict, root: Path) -> dict:
+    """End a broad-market or intraday turn when this desk has no stored print.
+
+    Does not fetch, does not score, and does not ask for a data window.
+    """
+    if row.get("窗口") != "分析":
+        return row
+    round_name = row.get("轮次") or ""
+    if round_name != "大盘" and not str(round_name).startswith("盘中"):
+        return row
+    if not stores_missing(root):
+        return row
+    stopped = dict(row)
+    stopped["读"] = "无"
+    stopped["停写"] = "是"
+    stopped["原因"] = REASON
+    stopped["操作"] = OPERATION
+    return stopped
 
 
 def format_plan(row: dict) -> str:
@@ -106,8 +152,12 @@ def format_plan(row: dict) -> str:
         f"缺快照: {row['缺快照']}",
         f"不打开: {row['不打开']}",
     ]
-    if row["持仓"]:
+    if row.get("持仓"):
         lines.append(f"持仓: {row['持仓']}")
+    if row.get("停写"):
+        lines.append(f"停写: {row['停写']}")
+        lines.append(f"原因: {row['原因']}")
+        lines.append(f"操作: {row['操作']}")
     return "\n".join(lines)
 
 
@@ -117,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ask", required=True, help="用户原话")
     args = parser.parse_args(argv)
     try:
-        row = plan(args.at, args.ask)
+        row = apply_empty_stop(plan(args.at, args.ask), ROOT)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
