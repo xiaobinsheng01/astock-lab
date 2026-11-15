@@ -32,6 +32,14 @@ class RouteTest(unittest.TestCase):
         self.assertIn("持仓: 没提供就写待提供", text)
         self.assertNotIn("是否取数", text)
 
+    def test_preview_and_intraday_read_the_operation_order(self) -> None:
+        intraday = plan("2026-11-10 10:05", "盘中")
+        preview = plan("2026-11-10 08:30", "大盘预判")
+        self.assertIn("操作令", intraday["读"])
+        self.assertEqual(preview["轮次"], "预判")
+        self.assertIn("操作令", preview["读"])
+        self.assertEqual(preview["跑"], "无")
+
     def test_intraday_slot_follows_the_clock(self) -> None:
         self.assertEqual(plan("2026-11-10 10:05", "盘中")["轮次"], "盘中 10:00")
         self.assertEqual(plan("2026-11-10 12:50", "盘中")["轮次"], "盘中 12:50")

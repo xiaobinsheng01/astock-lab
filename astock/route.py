@@ -79,7 +79,11 @@ def plan(at: str, ask: str) -> dict:
         return row
     if "盘中" in text:
         row["轮次"] = f"盘中 {_slot(clock, text)}"
-        row["读"] = "硬门、盘中分析、持仓、路径、热层快照"
+        row["读"] = "硬门、盘中分析、持仓、路径、操作令、热层快照"
+        return row
+    if any(word in text for word in ("预判", "走势", "板块波动", "大盘")):
+        row["轮次"] = "预判"
+        row["读"] = "硬门、全天走势、发力、操作令、热层快照"
         return row
     if any(word in text for word in ("取数", "资料面", "取行情", "补缺口")):
         row["窗口"] = "取数"
