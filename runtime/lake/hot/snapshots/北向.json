@@ -1,0 +1,17 @@
+{
+  "采集": "2026-11-16 22:38",
+  "交易日": "2026-11-16",
+  "状态": "成交额已补，净额缺口",
+  "成交额": {
+    "沪股通亿元": 1082.4,
+    "深股通亿元": 1120.0,
+    "合计亿元": 2202.4,
+    "来源": "push2.eastmoney.com kamt buySellAmt，单位万元。沪 10823999.08，深 11199963.90。",
+    "核对": "RPT_MUTUAL_DEALAMT 的 SSC_DEAL_AMT 108239.99、ST_DEAL_AMT 111999.64、NF_DEAL_AMT 220239.63，与 buySellAmt 相差 100 倍，换算后是同一笔成交额。"
+  },
+  "净额": {
+    "状态": "缺口",
+    "kamt": "hk2sh 与 hk2sz 的 dayNetAmtIn、netBuyAmt、buyAmt 都是 0，buySellAmt 不是 0。不把 0 记成净买入。",
+    "历史": "RPT_MUTUAL_DEAL_HISTORY 里 001 沪股通、003 深股通的 NET_DEAL_AMT 为空。002、004、006 的领涨是 02526.HK，净额属于港股通，不写入北向。"
+  }
+}
