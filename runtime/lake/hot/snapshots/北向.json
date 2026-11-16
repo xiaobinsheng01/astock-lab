@@ -1,0 +1,25 @@
+{
+  "采集": "2026-11-16 22:23",
+  "交易日": "2026-11-16",
+  "状态": "缺口",
+  "来源": "push2.eastmoney.com kamt",
+  "字段": {
+    "hk2sh": {
+      "dayNetAmtIn": 0.0,
+      "netBuyAmt": 0.0,
+      "buyAmt": 0.0,
+      "buySellAmt": 10823999.08,
+      "status": 3,
+      "date2": "2026-11-16"
+    },
+    "hk2sz": {
+      "dayNetAmtIn": 0.0,
+      "netBuyAmt": 0.0,
+      "buyAmt": 0.0,
+      "buySellAmt": 11199963.9,
+      "status": 3,
+      "date2": "2026-11-16"
+    }
+  },
+  "说明": "净买入字段和买入额都是 0，成交额不是 0。不把 0 记成收盘净买入。"
+}
