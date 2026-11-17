@@ -265,17 +265,17 @@
     "source": "proxy.finance.qq.com/newfqkline"
   },
   "breadth": {
-    "rise_count": 1109,
-    "fall_count": 4019,
-    "stay_count": 89,
-    "limit_up_count": 33,
-    "limit_down_count": 63,
-    "limit_up_broken_count": 16,
-    "limit_up_broken_ratio": 0.32653061224489793,
-    "yesterday_limit_up_avg_pcp": 0.008482289644736843
+    "rise_count": 0,
+    "fall_count": 0,
+    "stay_count": 0,
+    "limit_up_count": 0,
+    "limit_down_count": 0,
+    "limit_up_broken_count": 0,
+    "limit_up_broken_ratio": 0,
+    "yesterday_limit_up_avg_pcp": 0
   },
   "breadth_close": {
-    "state": "已核15:00",
+    "state": "上一交易日收盘",
     "verified": true
   },
   "limit_up": {
@@ -347,15 +347,15 @@
       },
       {
         "lbc": 2,
-        "name": "凯撒文化",
-        "code": "002425",
-        "hy": "游戏Ⅱ"
-      },
-      {
-        "lbc": 2,
         "name": "金新农",
         "code": "002548",
         "hy": "饲料"
+      },
+      {
+        "lbc": 2,
+        "name": "凯撒文化",
+        "code": "002425",
+        "hy": "游戏Ⅱ"
       },
       {
         "lbc": 2,
@@ -494,14 +494,13 @@
   },
   "w6": {
     "dims": {
-      "breadth": -1,
-      "limit": -2,
+      "limit": -1,
       "premium": 0,
       "height": 1,
       "volume": 0
     },
     "composite": 0,
-    "scored_n": 5
+    "scored_n": 4
   },
   "next_session_band": {
     "hard_low": 3586.57,
@@ -522,6 +521,7 @@
     "catalyst_dated": false,
     "follow_through": "unchecked"
   },
-  "采集": "2026-11-16 22:12",
-  "交易日": "2026-11-16"
+  "采集": "2026-11-17 09:09",
+  "交易日": "2026-11-16",
+  "说明": "2026-11-17 09:08 重取。上证报价钟仍是 20261116161427，源没有打出 11 月 17 日开盘价。"
 }
