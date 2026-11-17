@@ -27,6 +27,22 @@ PCT_TOLERANCE = 0.05
 AMOUNT_TOLERANCE_YI = 0.05
 BEIJING = timezone(timedelta(hours=8))
 
+
+class Product:
+    """One tape. `em_div` is the Eastmoney integer price scale. Percent stays /100."""
+
+    def __init__(self, code: str, name: str, symbol: str, secid: str, em_div: int, digits: int):
+        self.code = code
+        self.name = name
+        self.symbol = symbol
+        self.secid = secid
+        self.em_div = em_div
+        self.digits = digits
+
+
+CSI300 = Product("000300", "沪深300", "sh000300", "1.000300", 100, 2)
+DUAL50 = Product("588330", "双创50ETF华宝", "sh588330", "1.588330", 1000, 3)
+
 QUOTE_URL = "https://qt.gtimg.cn/q=sh000300"
 IFZQ_URL = (
     "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh000300,day,,,12,qfq"
@@ -130,16 +146,16 @@ def session_word(clock: str) -> str:
     return "盘中"
 
 
-def parse_tencent_quote(raw: str) -> dict:
+def parse_tencent_quote(raw: str, product: Product = CSI300) -> dict:
     if _looks_closed(raw) or "~" not in raw:
         return _unmounted("空")
     parts = raw.split('"', 1)[-1].split("~")
-    if len(parts) < 35 or parts[2] != CODE:
+    if len(parts) < 35 or parts[2] != product.code:
         return _unmounted("空")
     amount_wan = _num(parts[37]) if len(parts) > 37 else None
     return {
-        "name": parts[1].replace(" ", "") or NAME,
-        "code": CODE,
+        "name": parts[1].replace(" ", "") or product.name,
+        "code": product.code,
         "px": _num(parts[3]),
         "prev": _num(parts[4]),
         "open": _num(parts[5]),
@@ -152,8 +168,9 @@ def parse_tencent_quote(raw: str) -> dict:
     }
 
 
-def parse_sina_quote(raw: str) -> dict:
-    if _looks_closed(raw) or "hq_str_sh000300" not in raw or '"' not in raw:
+def parse_sina_quote(raw: str, product: Product = CSI300) -> dict:
+    marker = f"hq_str_{product.symbol}"
+    if _looks_closed(raw) or marker not in raw or '"' not in raw:
         return _unmounted("空")
     fields = raw.split('"', 1)[1].split(",")
     if len(fields) < 32 or not fields[3]:
@@ -161,8 +178,8 @@ def parse_sina_quote(raw: str) -> dict:
     amount_yuan = _num(fields[9])
     clock = f"{fields[30]} {fields[31]}".strip()
     return {
-        "name": fields[0] or NAME,
-        "code": CODE,
+        "name": fields[0] or product.name,
+        "code": product.code,
         "open": _num(fields[1]),
         "prev": _num(fields[2]),
         "px": _num(fields[3]),
@@ -175,13 +192,15 @@ def parse_sina_quote(raw: str) -> dict:
     }
 
 
-def _em_price(value):
+def _em_price(value, divisor: int = 100):
     number = _num(value)
     if number is None:
         return None
-    if isinstance(value, int) or (isinstance(value, str) and value.lstrip("-").isdigit()):
-        if abs(number) >= 10000:
-            return number / 100
+    whole = isinstance(value, int) or (isinstance(value, str) and value.lstrip("-").isdigit())
+    if whole and divisor == 1000:
+        return number / 1000
+    if whole and abs(number) >= 10000:
+        return number / 100
     return number
 
 
@@ -194,7 +213,7 @@ def _em_pct(value):
     return number
 
 
-def parse_eastmoney_quote(raw: str) -> dict:
+def parse_eastmoney_quote(raw: str, product: Product = CSI300) -> dict:
     if _looks_closed(raw):
         return _unmounted("登录")
     try:
@@ -205,13 +224,13 @@ def parse_eastmoney_quote(raw: str) -> dict:
         return _unmounted("空")
     amount_yuan = _num(data.get("f48"))
     return {
-        "name": data.get("f58") or NAME,
-        "code": str(data.get("f57") or CODE),
-        "px": _em_price(data.get("f43")),
-        "high": _em_price(data.get("f44")),
-        "low": _em_price(data.get("f45")),
-        "open": _em_price(data.get("f46")),
-        "prev": _em_price(data.get("f60")),
+        "name": data.get("f58") or product.name,
+        "code": str(data.get("f57") or product.code),
+        "px": _em_price(data.get("f43"), product.em_div),
+        "high": _em_price(data.get("f44"), product.em_div),
+        "low": _em_price(data.get("f45"), product.em_div),
+        "open": _em_price(data.get("f46"), product.em_div),
+        "prev": _em_price(data.get("f60"), product.em_div),
         "vendor_pct": _em_pct(data.get("f170")),
         "amount_yi": None if amount_yuan is None else round(amount_yuan / 100000000, 2),
         "clock": _clock_from_unix(data.get("f86")),
@@ -232,12 +251,12 @@ def _bar(date, open_, close, high, low, amount_yi) -> dict | None:
     }
 
 
-def _tencent_rows(raw: str) -> dict:
+def _tencent_rows(raw: str, product: Product = CSI300) -> dict:
     if _looks_closed(raw):
         return _unmounted("登录")
     try:
         payload = _loads(raw)
-        series = (payload.get("data") or {}).get("sh000300") or {}
+        series = (payload.get("data") or {}).get(product.symbol) or {}
         rows = series.get("qfqday") or series.get("day") or []
     except (json.JSONDecodeError, AttributeError):
         return _unmounted("空")
@@ -260,15 +279,15 @@ def _tencent_rows(raw: str) -> dict:
     return {"rows": out}
 
 
-def parse_ifzq(raw: str) -> dict:
-    parsed = _tencent_rows(raw)
+def parse_ifzq(raw: str, product: Product = CSI300) -> dict:
+    parsed = _tencent_rows(raw, product)
     if parsed.get("status") == "未挂":
         return parsed
     return {"rows": parsed["rows"], "source": "web.ifzq.gtimg.cn"}
 
 
-def parse_newfq(raw: str) -> dict:
-    parsed = _tencent_rows(raw)
+def parse_newfq(raw: str, product: Product = CSI300) -> dict:
+    parsed = _tencent_rows(raw, product)
     if parsed.get("status") == "未挂":
         return parsed
     return {"rows": parsed["rows"], "source": "proxy.finance.qq.com/newfqkline"}
@@ -371,15 +390,61 @@ def _read(get, url: str, parser, mounts: list[dict]) -> dict | None:
     return parsed
 
 
-def collect(get) -> dict:
+def _endpoints(product: Product) -> dict:
+    """CSI 300 keeps the module constants so callers can match those URLs."""
+    if product.code == CSI300.code and product.symbol == CSI300.symbol:
+        return {
+            "quote": ((QUOTE_URL, lambda raw: parse_tencent_quote(raw, product)),
+                      (SINA_QUOTE_URL, lambda raw: parse_sina_quote(raw, product)),
+                      (EM_QUOTE_URL, lambda raw: parse_eastmoney_quote(raw, product))),
+            "ifzq": (IFZQ_URL, lambda raw: parse_ifzq(raw, product)),
+            "newfq": (NEWFQ_URL, lambda raw: parse_newfq(raw, product)),
+            "fallback": ((SINA_KLINE_URL, parse_sina_kline),
+                         (EM_KLINE_URL, parse_eastmoney_kline)),
+        }
+    symbol = product.symbol
+    return {
+        "quote": (
+            (f"https://qt.gtimg.cn/q={symbol}", lambda raw: parse_tencent_quote(raw, product)),
+            (f"https://hq.sinajs.cn/list={symbol}", lambda raw: parse_sina_quote(raw, product)),
+            (
+                "https://push2.eastmoney.com/api/qt/stock/get?secid="
+                f"{product.secid}&fields=f43,f44,f45,f46,f48,f57,f58,f60,f86,f169,f170",
+                lambda raw: parse_eastmoney_quote(raw, product),
+            ),
+        ),
+        "ifzq": (
+            "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+            f"?param={symbol},day,,,12,qfq",
+            lambda raw: parse_ifzq(raw, product),
+        ),
+        "newfq": (
+            "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get"
+            f"?param={symbol},day,,,12,qfq",
+            lambda raw: parse_newfq(raw, product),
+        ),
+        "fallback": (
+            (
+                "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"
+                f"CN_MarketData.getKLineData?symbol={symbol}&scale=240&ma=no&datalen=12",
+                parse_sina_kline,
+            ),
+            (
+                "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid="
+                f"{product.secid}&klt=101&fqt=1&lmt=12&end=20500101"
+                "&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
+                parse_eastmoney_kline,
+            ),
+        ),
+    }
+
+
+def collect_for(get, product: Product = CSI300) -> dict:
     """Build one packet. `get(url)` returns the response body or raises."""
+    ends = _endpoints(product)
     mounts: list[dict] = []
     quote = None
-    for url, parser in (
-        (QUOTE_URL, parse_tencent_quote),
-        (SINA_QUOTE_URL, parse_sina_quote),
-        (EM_QUOTE_URL, parse_eastmoney_quote),
-    ):
+    for url, parser in ends["quote"]:
         parsed = _read(get, url, parser, mounts)
         if parsed:
             quote = parsed
@@ -387,8 +452,8 @@ def collect(get) -> dict:
 
     ohlc = None
     bar_source = ""
-    ifzq = _read(get, IFZQ_URL, parse_ifzq, mounts)
-    newfq = _read(get, NEWFQ_URL, parse_newfq, mounts)
+    ifzq = _read(get, ends["ifzq"][0], ends["ifzq"][1], mounts)
+    newfq = _read(get, ends["newfq"][0], ends["newfq"][1], mounts)
     if ifzq:
         rows = ifzq["rows"]
         bar_source = ifzq["source"]
@@ -400,23 +465,36 @@ def collect(get) -> dict:
         ohlc = newfq["rows"]
         bar_source = newfq["source"]
     else:
-        for url, parser in (
-            (SINA_KLINE_URL, parse_sina_kline),
-            (EM_KLINE_URL, parse_eastmoney_kline),
-        ):
+        for url, parser in ends["fallback"]:
             parsed = _read(get, url, parser, mounts)
             if parsed:
                 ohlc = parsed["rows"]
                 bar_source = parsed["source"]
                 break
 
-    return assemble(quote, _with_pct(ohlc or []), bar_source, mounts)
+    return assemble(quote, _with_pct(ohlc or []), bar_source, mounts, product)
 
 
-def assemble(quote: dict | None, bars: list[dict], bar_source: str, mounts: list[dict]) -> dict:
+def collect(get) -> dict:
+    """CSI 300 packet. `get(url)` returns the response body or raises."""
+    return collect_for(get, CSI300)
+
+
+def _px(value, digits: int) -> str:
+    return f"{value:.{digits}f}"
+
+
+def assemble(
+    quote: dict | None,
+    bars: list[dict],
+    bar_source: str,
+    mounts: list[dict],
+    product: Product = CSI300,
+) -> dict:
+    label = product.name
     packet = {
-        "code": CODE,
-        "name": NAME,
+        "code": product.code,
+        "name": label,
         "status": "未挂",
         "session": "",
         "px": None,
@@ -436,15 +514,17 @@ def assemble(quote: dict | None, bars: list[dict], bar_source: str, mounts: list
         "mounts": mounts,
         "weights": "不进W1–W8",
         "cushion": "不进托住",
-        "text": "沪深300 报价未挂",
+        "text": f"{label} 报价未挂",
     }
     if not quote:
         if bars:
             packet["status"] = "缺口"
-            packet["text"] = "沪深300 缺现价或前收"
+            packet["text"] = f"{label} 缺现价或前收"
         return packet
     packet.update(
         {
+            "name": quote.get("name") or label,
+            "code": quote.get("code") or product.code,
             "px": quote.get("px"),
             "prev": quote.get("prev"),
             "open": quote.get("open"),
@@ -456,6 +536,7 @@ def assemble(quote: dict | None, bars: list[dict], bar_source: str, mounts: list
             "source": quote.get("source") or "",
         }
     )
+    label = packet["name"]
     missing = [
         name
         for name in ("px", "prev", "open", "high", "low", "clock")
@@ -463,7 +544,7 @@ def assemble(quote: dict | None, bars: list[dict], bar_source: str, mounts: list
     ]
     if missing or not packet["prev"]:
         packet["status"] = "缺口"
-        packet["text"] = "沪深300 缺现价、前收或行情时间"
+        packet["text"] = f"{label} 缺现价、前收或行情时间"
         return packet
     computed = _round_pct((packet["px"] - packet["prev"]) / packet["prev"] * 100)
     vendor = packet["vendor_pct"]
@@ -472,7 +553,7 @@ def assemble(quote: dict | None, bars: list[dict], bar_source: str, mounts: list
     if vendor is not None and abs(vendor - computed) > PCT_TOLERANCE:
         packet["status"] = "未核"
         packet["text"] = (
-            f"沪深300 来源涨跌幅 {vendor:.2f} 与现价前收算出的 {computed:.2f} 对不上，两个都留。"
+            f"{label} 来源涨跌幅 {vendor:.2f} 与现价前收算出的 {computed:.2f} 对不上，两个都留。"
             "不进权重，不进托住。"
         )
         return packet
@@ -484,7 +565,7 @@ def assemble(quote: dict | None, bars: list[dict], bar_source: str, mounts: list
             packet["amount_status"] = "未核"
             packet["status"] = "未核"
             packet["text"] = (
-                f"沪深300 现价成交额 {packet['amount_yi']:.2f} 与日K成交额 {last['amount_yi']:.2f} 对不上，两个都留。"
+                f"{label} 现价成交额 {packet['amount_yi']:.2f} 与日K成交额 {last['amount_yi']:.2f} 对不上，两个都留。"
                 "不进权重，不进托住。"
             )
             return packet
@@ -496,9 +577,10 @@ def assemble(quote: dict | None, bars: list[dict], bar_source: str, mounts: list
         amount_bit = f"，成交额 {packet['amount_yi']:.2f} 亿元"
     bar_bit = "" if bars else "，日K未挂"
     packet["status"] = "已核"
+    digits = product.digits
     packet["text"] = (
-        f"沪深300 {packet['session']} {packet['px']:.2f}，涨跌幅 {packet['pct']:.2f}%，"
-        f"高 {packet['high']:.2f}，低 {packet['low']:.2f}{amount_bit}，"
+        f"{label} {packet['session']} {_px(packet['px'], digits)}，涨跌幅 {packet['pct']:.2f}%，"
+        f"高 {_px(packet['high'], digits)}，低 {_px(packet['low'], digits)}{amount_bit}，"
         f"报价 {packet['clock']}{bar_bit}。不进权重，不进托住。"
     )
     return packet
@@ -506,8 +588,8 @@ def assemble(quote: dict | None, bars: list[dict], bar_source: str, mounts: list
 
 def snapshot(result: dict) -> dict:
     return {
-        "代码": CODE,
-        "名称": NAME,
+        "代码": result.get("code") or CODE,
+        "名称": result.get("name") or NAME,
         "状态": result.get("status"),
         "时段": result.get("session") or "",
         "开": result.get("open"),
@@ -538,7 +620,9 @@ def store(result: dict, root: Path | None = None) -> dict:
     Daily bars are replaced only when this packet has some.
     """
     lake = root or LAKE
-    path = lake / "hot" / "snapshots" / "沪深300.json"
+    name = result.get("name") or NAME
+    code = str(result.get("code") or CODE)
+    path = lake / "hot" / "snapshots" / f"{name}.json"
     written: dict = {}
     if result.get("status") == "未挂" and path.exists():
         written["snapshot"] = "保留上一份"
@@ -551,7 +635,7 @@ def store(result: dict, root: Path | None = None) -> dict:
         written["snapshot"] = str(path)
     bars = result.get("bars") or []
     if bars:
-        written["bars"] = write_bars(lake, CODE, bars)
+        written["bars"] = write_bars(lake, code, bars)
     return written
 
 
