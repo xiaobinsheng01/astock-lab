@@ -96,10 +96,16 @@ def write_news(root: Path, publish_date: str, fact: dict) -> dict:
     return {"status": "已写", "path": str(path)}
 
 
-def write_bars(root: Path, code: str, rows: list[dict]) -> dict:
-    """Keep at least the latest ten sessions, and do not drop them on archive."""
+def write_bars(root: Path, code: str, rows: list[dict], keep: int = 10) -> dict:
+    """Keep the latest `keep` sessions. The default ten is the short daily line.
+
+    The Shanghai box passes 80 so the 40-day swings and the 60-day average both fit.
+    Archive does not drop this file.
+    """
+    if keep < 1:
+        raise ValueError("keep")
     ordered = sorted(rows, key=lambda item: item["date"])
-    kept = ordered[-10:]
+    kept = ordered[-keep:]
     path = root / "bars" / f"{code}.json"
     _dump(path, kept)
     return {"status": "已写", "kept": len(kept), "path": str(path)}

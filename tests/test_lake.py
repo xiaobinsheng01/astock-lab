@@ -96,6 +96,18 @@ class StoreTest(unittest.TestCase):
             self.assertEqual(kept[0]["date"], "2026-10-03")
             self.assertEqual(kept[-1]["date"], "2026-10-12")
 
+    def test_bars_keep_can_hold_the_box_window(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rows = [{"date": f"2026-08-{day:02d}", "close": day, "high": day, "low": day} for day in range(1, 21)]
+            result = write_bars(Path(tmp), "000001", rows, keep=80)
+            self.assertEqual(result["kept"], 20)
+            kept = json.loads((Path(tmp) / "bars" / "000001.json").read_text(encoding="utf-8"))
+            self.assertEqual(len(kept), 20)
+            self.assertEqual(kept[0]["high"], 1)
+            self.assertEqual(kept[-1]["low"], 20)
+
 
 if __name__ == "__main__":
     unittest.main()

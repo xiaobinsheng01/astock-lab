@@ -51,6 +51,7 @@ class RouteTest(unittest.TestCase):
         self.assertIn("news", row["跑"])
         self.assertIn("csi300", row["跑"])
         self.assertIn("dual50", row["跑"])
+        self.assertIn("box", row["跑"])
         self.assertEqual(row["缺快照"], "未挂")
         self.assertNotIn("五行", row["跑"])
 

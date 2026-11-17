@@ -28,6 +28,7 @@ COMMANDS = {
     "cash": "astock.cash_close",
     "csi300": "astock.csi300",
     "dual50": "astock.dual50",
+    "box": "astock.box",
     "state": "astock.state",
 }
 
@@ -55,6 +56,7 @@ def _usage() -> str:
         "  cash      9:00 现金价                    python -m astock cash",
         "  csi300    沪深300现价和十日线            python -m astock csi300",
         "  dual50    双创50ETF华宝现价和十日线      python -m astock dual50",
+        "  box       上证箱体、20日和60日均线       python -m astock box",
     ]
     return "\n".join(lines)
 
