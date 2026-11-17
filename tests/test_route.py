@@ -49,6 +49,8 @@ class RouteTest(unittest.TestCase):
         row = plan("2026-11-10 15:15", "跑资料面")
         self.assertEqual(row["窗口"], "取数")
         self.assertIn("news", row["跑"])
+        self.assertIn("csi300", row["跑"])
+        self.assertIn("dual50", row["跑"])
         self.assertEqual(row["缺快照"], "未挂")
         self.assertNotIn("五行", row["跑"])
 
