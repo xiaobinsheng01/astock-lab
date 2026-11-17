@@ -265,14 +265,14 @@
     "source": "proxy.finance.qq.com/newfqkline"
   },
   "breadth": {
-    "rise_count": 0,
-    "fall_count": 0,
-    "stay_count": 0,
-    "limit_up_count": 0,
-    "limit_down_count": 0,
-    "limit_up_broken_count": 0,
-    "limit_up_broken_ratio": 0,
-    "yesterday_limit_up_avg_pcp": 0
+    "rise_count": 1109,
+    "fall_count": 4019,
+    "stay_count": 89,
+    "limit_up_count": 33,
+    "limit_down_count": 63,
+    "limit_up_broken_count": 16,
+    "limit_up_broken_ratio": 0.32653061224489793,
+    "yesterday_limit_up_avg_pcp": 0.008482289644736843
   },
   "breadth_close": {
     "state": "上一交易日收盘",
@@ -306,7 +306,7 @@
         2
       ],
       [
-        "炼化及贸",
+        "影视院线",
         1
       ],
       [
@@ -335,27 +335,27 @@
       },
       {
         "lbc": 2,
-        "name": "岳阳兴长",
-        "code": "000819",
-        "hy": "炼化及贸"
-      },
-      {
-        "lbc": 2,
         "name": "金逸影视",
         "code": "002905",
         "hy": "影视院线"
       },
       {
         "lbc": 2,
-        "name": "金新农",
-        "code": "002548",
-        "hy": "饲料"
+        "name": "岳阳兴长",
+        "code": "000819",
+        "hy": "炼化及贸"
       },
       {
         "lbc": 2,
         "name": "凯撒文化",
         "code": "002425",
         "hy": "游戏Ⅱ"
+      },
+      {
+        "lbc": 2,
+        "name": "金新农",
+        "code": "002548",
+        "hy": "饲料"
       },
       {
         "lbc": 2,
@@ -494,13 +494,14 @@
   },
   "w6": {
     "dims": {
-      "limit": -1,
+      "breadth": -1,
+      "limit": -2,
       "premium": 0,
       "height": 1,
       "volume": 0
     },
     "composite": 0,
-    "scored_n": 4
+    "scored_n": 5
   },
   "next_session_band": {
     "hard_low": 3586.57,
@@ -521,7 +522,7 @@
     "catalyst_dated": false,
     "follow_through": "unchecked"
   },
-  "采集": "2026-11-17 09:09",
+  "采集": "2026-11-17 08:52",
   "交易日": "2026-11-16",
-  "说明": "2026-11-17 09:08 重取。上证报价钟仍是 20261116161427，源没有打出 11 月 17 日开盘价。"
+  "说明": "报价于 2026-11-17 09:09 再取，上证钟仍是 20261116161427，价未变。09:09 选股宝家数已是 0，不覆盖 08:52 这份上一交易日收盘家数和 W6。"
 }

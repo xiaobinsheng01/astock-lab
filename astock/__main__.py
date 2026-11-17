@@ -26,6 +26,8 @@ COMMANDS = {
     "cfbond": "astock.cfbond_feed",
     "cninfo": "astock.cninfo_feed",
     "cash": "astock.cash_close",
+    "csi300": "astock.csi300",
+    "dual50": "astock.dual50",
     "state": "astock.state",
 }
 
@@ -51,6 +53,8 @@ def _usage() -> str:
         "  cfbond    中国财富网要闻                 python -m astock cfbond",
         "  cninfo    巨潮公告                       python -m astock cninfo",
         "  cash      9:00 现金价                    python -m astock cash",
+        "  csi300    沪深300现价和十日线            python -m astock csi300",
+        "  dual50    双创50ETF华宝现价和十日线      python -m astock dual50",
     ]
     return "\n".join(lines)
 
