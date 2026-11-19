@@ -1,303 +1,386 @@
 {
   "fast": false,
-  "gaps": [
-    "5日成交额未接入，量能不打分",
-    "turnover_mismatch:6502.32,7194.71",
-    "选股宝家数未核到15:00：未到收盘，W6家数不打分"
-  ],
+  "gaps": [],
   "quotes": {
     "000001": {
       "name": "上证指数",
-      "px": 3587.8,
+      "px": 3577.62,
       "prev": 3587.83,
-      "open": 0.0,
-      "pct": -0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091200"
+      "open": 3583.12,
+      "pct": -0.28,
+      "high": 3584.28,
+      "low": 3547.94,
+      "amount_yi": 6369.09,
+      "ts": "20261119161427"
     },
     "399001": {
       "name": "深证成指",
-      "px": 10659.41,
+      "px": 10583.2,
       "prev": 10659.41,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091142"
+      "open": 10591.73,
+      "pct": -0.71,
+      "high": 10664.29,
+      "low": 10505.84,
+      "amount_yi": 6682.38,
+      "ts": "20261119161442"
     },
     "399006": {
       "name": "创业板指",
-      "px": 2311.62,
+      "px": 2293.34,
       "prev": 2311.62,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091157"
+      "open": 2290.21,
+      "pct": -0.79,
+      "high": 2315.78,
+      "low": 2271.99,
+      "amount_yi": 3101.21,
+      "ts": "20261119161457"
     },
     "000688": {
       "name": "科创50",
-      "px": 1247.99,
+      "px": 1270.78,
       "prev": 1247.99,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091200"
+      "open": 1242.28,
+      "pct": 1.83,
+      "high": 1276.78,
+      "low": 1220.38,
+      "amount_yi": 1101.21,
+      "ts": "20261119161409"
     },
     "000016": {
       "name": "上证50",
-      "px": 2764.54,
+      "px": 2773.46,
       "prev": 2764.54,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091200"
+      "open": 2762.48,
+      "pct": 0.32,
+      "high": 2776.4,
+      "low": 2729.42,
+      "amount_yi": 1289.16,
+      "ts": "20261119161427"
     },
     "000300": {
       "name": "沪深300",
-      "px": 3983.77,
+      "px": 3984.84,
       "prev": 3983.77,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091200"
+      "open": 3972.43,
+      "pct": 0.03,
+      "high": 3995.55,
+      "low": 3937.75,
+      "amount_yi": 3954.41,
+      "ts": "20261119161409"
     },
     "000852": {
       "name": "中证1000",
-      "px": 6052.72,
+      "px": 5938.9,
       "prev": 6052.82,
-      "open": 0.0,
-      "pct": -0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091200"
+      "open": 6033.49,
+      "pct": -1.88,
+      "high": 6033.49,
+      "low": 5913.05,
+      "amount_yi": 2321.21,
+      "ts": "20261119161427"
     },
     "399986": {
       "name": "中证银行",
-      "px": 8151.31,
+      "px": 8144.4,
       "prev": 8151.31,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091148"
+      "open": 8166.44,
+      "pct": -0.08,
+      "high": 8173.08,
+      "low": 8084.91,
+      "amount_yi": 310.36,
+      "ts": "20261119161448"
     },
     "399998": {
       "name": "中证煤炭",
-      "px": 2225.99,
+      "px": 2200.94,
       "prev": 2225.99,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091221"
+      "open": 2222.86,
+      "pct": -1.13,
+      "high": 2223.04,
+      "low": 2190.77,
+      "amount_yi": 67.66,
+      "ts": "20261119161421"
     },
     "399997": {
       "name": "中证白酒",
-      "px": 6775.52,
+      "px": 6766.45,
       "prev": 6775.52,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091218"
+      "open": 6772.96,
+      "pct": -0.13,
+      "high": 6799.99,
+      "low": 6694.74,
+      "amount_yi": 114.76,
+      "ts": "20261119161418"
     },
     "000807": {
       "name": "食品饮料",
-      "px": 15929.02,
+      "px": 16024.81,
       "prev": 15929.02,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091222"
+      "open": 15940.97,
+      "pct": 0.6,
+      "high": 16069.92,
+      "low": 15863.48,
+      "amount_yi": 220.39,
+      "ts": "20261119161452"
     },
     "000015": {
       "name": "红利指数",
-      "px": 3328.18,
+      "px": 3313.31,
       "prev": 3328.18,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091200"
+      "open": 3323.61,
+      "pct": -0.45,
+      "high": 3323.61,
+      "low": 3294.81,
+      "amount_yi": 306.8,
+      "ts": "20261119161427"
     },
     "399809": {
       "name": "保险主题",
-      "px": 2228.88,
+      "px": 2225.33,
       "prev": 2228.88,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091215"
+      "open": 2233.57,
+      "pct": -0.16,
+      "high": 2233.6,
+      "low": 2207.47,
+      "amount_yi": 194.14,
+      "ts": "20261119161415"
     },
     "399811": {
       "name": "CSSW电子",
-      "px": 5021.31,
+      "px": 5037.58,
       "prev": 5021.31,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091221"
+      "open": 4963.25,
+      "pct": 0.32,
+      "high": 5088.86,
+      "low": 4892.37,
+      "amount_yi": 1597.05,
+      "ts": "20261119161421"
     },
     "000685": {
       "name": "科创芯片",
-      "px": 2828.69,
+      "px": 2869.48,
       "prev": 2828.69,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091200"
+      "open": 2815.25,
+      "pct": 1.44,
+      "high": 2890.99,
+      "low": 2756.71,
+      "amount_yi": 1135.39,
+      "ts": "20261119161409"
     },
     "399389": {
       "name": "国证通信",
-      "px": 6844.99,
+      "px": 6786.02,
       "prev": 6844.99,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091212"
+      "open": 6773.85,
+      "pct": -0.86,
+      "high": 6842.92,
+      "low": 6669.1,
+      "amount_yi": 808.29,
+      "ts": "20261119161412"
     },
     "000941": {
       "name": "新能源",
-      "px": 1729.18,
+      "px": 1697.98,
       "prev": 1729.18,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091222"
+      "open": 1722.98,
+      "pct": -1.8,
+      "high": 1722.98,
+      "low": 1682.01,
+      "amount_yi": 297.42,
+      "ts": "20261119161452"
     },
     "000993": {
       "name": "全指信息",
-      "px": 7555.18,
+      "px": 7563.65,
       "prev": 7555.18,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091200"
+      "open": 7500.24,
+      "pct": 0.11,
+      "high": 7637.46,
+      "low": 7394.8,
+      "amount_yi": 2497.52,
+      "ts": "20261119161421"
     },
     "600519": {
       "name": "贵州茅台",
-      "px": 1442.66,
+      "px": 1460.21,
       "prev": 1442.66,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091225"
+      "open": 1442.0,
+      "pct": 1.22,
+      "high": 1464.99,
+      "low": 1432.1,
+      "amount_yi": 61.92,
+      "ts": "20261119161455"
     },
     "300750": {
       "name": "宁德时代",
-      "px": 241.01,
+      "px": 234.58,
       "prev": 241.01,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091218"
+      "open": 239.93,
+      "pct": -2.67,
+      "high": 240.79,
+      "low": 233.3,
+      "amount_yi": 88.06,
+      "ts": "20261119161445"
     },
     "002081": {
       "name": "金螳螂",
-      "px": 4.36,
+      "px": 4.07,
       "prev": 4.36,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091230"
+      "open": 4.3,
+      "pct": -6.65,
+      "high": 4.31,
+      "low": 4.01,
+      "amount_yi": 7.08,
+      "ts": "20261119161430"
     },
     "601061": {
       "name": "中信金属",
-      "px": 8.82,
+      "px": 8.72,
       "prev": 8.82,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091230"
+      "open": 8.76,
+      "pct": -1.13,
+      "high": 8.76,
+      "low": 8.59,
+      "amount_yi": 0.77,
+      "ts": "20261119161500"
     },
     "000559": {
       "name": "万向钱潮",
-      "px": 10.64,
+      "px": 10.23,
       "prev": 10.64,
-      "open": 0.0,
-      "pct": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "amount_yi": 0.0,
-      "ts": "20261119091139"
+      "open": 10.58,
+      "pct": -3.85,
+      "high": 10.74,
+      "low": 10.17,
+      "amount_yi": 5.1,
+      "ts": "20261119161439"
     }
   },
   "turnover": {
-    "shanghai_yi": 0.0,
-    "shenzhen_yi": 0.0,
-    "two_market_yi": 0.0,
-    "avg5_yi": null,
-    "ratio": null,
-    "source": null
+    "shanghai_yi": 6369.09,
+    "shenzhen_yi": 6682.38,
+    "two_market_yi": 13051.47,
+    "avg5_yi": 15799.27,
+    "ratio": 0.826,
+    "source": "proxy.finance.qq.com/newfqkline"
   },
   "breadth": {
-    "rise_count": 0,
-    "fall_count": 0,
-    "stay_count": 0,
-    "limit_up_count": 0,
-    "limit_down_count": 0,
-    "limit_up_broken_count": 0,
-    "limit_up_broken_ratio": 0,
-    "yesterday_limit_up_avg_pcp": 0
+    "rise_count": 638,
+    "fall_count": 4532,
+    "stay_count": 47,
+    "limit_up_count": 26,
+    "limit_down_count": 72,
+    "limit_up_broken_count": 27,
+    "limit_up_broken_ratio": 0.5094339622641509,
+    "yesterday_limit_up_avg_pcp": 0.005751841695238092
   },
   "breadth_close": {
-    "state": "未到收盘",
-    "verified": false
+    "state": "已核15:00",
+    "verified": true
   },
   "limit_up": {
-    "n": 0,
-    "top_hy": [],
-    "height": []
+    "n": 23,
+    "top_hy": [
+      [
+        "半导体",
+        3
+      ],
+      [
+        "电子化学",
+        2
+      ],
+      [
+        "化学制品",
+        2
+      ],
+      [
+        "家电零部",
+        2
+      ],
+      [
+        "小家电",
+        1
+      ],
+      [
+        "综合Ⅱ",
+        1
+      ],
+      [
+        "IT服务Ⅱ",
+        1
+      ],
+      [
+        "装修装饰",
+        1
+      ]
+    ],
+    "height": [
+      {
+        "lbc": 3,
+        "name": "真视通",
+        "code": "002771",
+        "hy": "IT服务Ⅱ"
+      },
+      {
+        "lbc": 3,
+        "name": "全筑股份",
+        "code": "603030",
+        "hy": "装修装饰"
+      },
+      {
+        "lbc": 3,
+        "name": "盛剑科技",
+        "code": "603324",
+        "hy": "环保设备"
+      },
+      {
+        "lbc": 2,
+        "name": "华升股份",
+        "code": "600156",
+        "hy": "纺织制造"
+      },
+      {
+        "lbc": 2,
+        "name": "京蓝科技",
+        "code": "000711",
+        "hy": "环境治理"
+      },
+      {
+        "lbc": 1,
+        "name": "九阳股份",
+        "code": "002242",
+        "hy": "小家电"
+      },
+      {
+        "lbc": 1,
+        "name": "毅昌科技",
+        "code": "002420",
+        "hy": "综合Ⅱ"
+      },
+      {
+        "lbc": 1,
+        "name": "格林达",
+        "code": "603931",
+        "hy": "电子化学"
+      }
+    ]
   },
   "repair": {
-    "bank_pct": 0.0,
-    "coal_pct": 0.0,
-    "insurance_pct": 0.0,
-    "csi300_pct": 0.0,
-    "csi1000_pct": -0.0,
-    "liquor_pct": 0.0,
-    "moutai_pct": 0.0,
-    "catl_pct": 0.0,
-    "down_members": [],
-    "defensive_any_one_down": false,
+    "bank_pct": -0.08,
+    "coal_pct": -1.13,
+    "insurance_pct": -0.16,
+    "csi300_pct": 0.03,
+    "csi1000_pct": -1.88,
+    "liquor_pct": -0.13,
+    "moutai_pct": 1.22,
+    "catl_pct": -2.67,
+    "down_members": [
+      "bank",
+      "coal",
+      "insurance",
+      "liquor"
+    ],
+    "defensive_any_one_down": true,
     "csi300_gain_below_csi1000": false,
     "liquor_required_up": false,
     "insurance_on_bank_side": false,
@@ -305,23 +388,23 @@
     "repair_day": false
   },
   "structure": {
-    "shanghai_pct": -0.0,
-    "bank_pct": 0.0,
-    "electronics_pct": 0.0,
-    "chip_pct": 0.0,
-    "telecom_pct": 0.0,
-    "chinext_pct": 0.0,
-    "star50_pct": 0.0,
-    "sse50_pct": 0.0,
-    "food_pct": 0.0,
-    "liquor_pct": 0.0,
-    "dividend_pct": 0.0,
-    "insurance_pct": 0.0,
-    "new_energy_pct": 0.0,
-    "hedge": "same_or_flat",
-    "down_side": null,
-    "bank_cushion": "not_applicable",
-    "book_price": "not_applicable",
+    "shanghai_pct": -0.28,
+    "bank_pct": -0.08,
+    "electronics_pct": 0.32,
+    "chip_pct": 1.44,
+    "telecom_pct": -0.86,
+    "chinext_pct": -0.79,
+    "star50_pct": 1.83,
+    "sse50_pct": 0.32,
+    "food_pct": 0.6,
+    "liquor_pct": -0.13,
+    "dividend_pct": -0.45,
+    "insurance_pct": -0.16,
+    "new_energy_pct": -1.8,
+    "hedge": "opposite",
+    "down_side": "banks",
+    "bank_cushion": "bank_did_not_hold",
+    "book_price": "book_price_did_not_hold",
     "national_team_share_anchor": "2026-09-30_unchanged",
     "national_team_entities": [
       "huijin_investment",
@@ -347,10 +430,10 @@
       "601336"
     ],
     "etf_creation_label": "broad_etf_creation_not_huijin_buy",
-    "food_cushion": "not_applicable",
+    "food_cushion": "food_held",
     "chinext_down_at_least_1pct": false,
     "secondary_cushion": [],
-    "weights_fell_less": false,
+    "weights_fell_less": true,
     "decision": "no_set_decision",
     "hedge_leg": "bank_399986_vs_electronics_399811",
     "insurance_on_bank_side": false,
@@ -390,46 +473,52 @@
   },
   "sell_checks": {
     "002081": {
-      "open": 0.0,
-      "high": 0.0,
-      "low": 0.0,
-      "px": 4.36,
-      "open_at_or_above_3_88": false,
+      "open": 4.3,
+      "high": 4.31,
+      "low": 4.01,
+      "px": 4.07,
+      "open_at_or_above_3_88": true,
       "traded_through_3_88_4_00": false
     },
     "601061": {
-      "open": 0.0,
-      "high": 0.0,
-      "px": 8.82,
+      "open": 8.76,
+      "high": 8.76,
+      "px": 8.72,
       "close_below_9_55": true,
       "high_below_9_55": true
     },
     "000559": {
-      "px": 10.64,
-      "pct": 0.0
+      "px": 10.23,
+      "pct": -3.85
     }
   },
   "w6": {
-    "dims": {},
-    "composite": null,
-    "scored_n": 0
+    "dims": {
+      "breadth": -2,
+      "limit": -2,
+      "premium": 0,
+      "height": 0,
+      "volume": -1
+    },
+    "composite": -1,
+    "scored_n": 5
   },
   "next_session_band": {
-    "hard_low": 0.0,
-    "hard_high": 0.0,
-    "midpoint": 0.0,
-    "narrow_low": 0.0,
-    "narrow_high": 0.0,
-    "above": 0.0,
-    "below": 0.0
+    "hard_low": 3547.94,
+    "hard_high": 3584.28,
+    "midpoint": 3566.11,
+    "narrow_low": 3547.94,
+    "narrow_high": 3566.11,
+    "above": 3584.28,
+    "below": 3547.94
   },
   "sector_state": {
-    "state": "unchecked",
-    "top_industry": "",
-    "second_count": null,
-    "height_in_leader": null,
-    "leader_index_pct": null,
-    "leader_prior_high": null,
+    "state": "not_established",
+    "top_industry": "半导体",
+    "second_count": 2,
+    "height_in_leader": false,
+    "leader_index_pct": 1.44,
+    "leader_prior_high": 2890.99,
     "catalyst_dated": false,
     "follow_through": "unchecked"
   }
