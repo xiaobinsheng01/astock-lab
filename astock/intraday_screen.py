@@ -23,6 +23,7 @@ from astock.sector_drive import (
     _num,
     fetch_board,
     fetch_closes,
+    ma20_mark,
     main_board,
 )
 
@@ -56,15 +57,19 @@ def assign(members: dict[str, list[dict]]) -> dict[str, list[dict]]:
 
 
 def both_averages(closes: list[float], live) -> dict:
-    """Live price must clear both averages. Today's close is inside the averages."""
+    """Live price must clear both averages. Today's close is inside the averages.
+
+    The 20-day line is only a position mark. It does not remove a name.
+    """
+    marked = ma20_mark(closes, live if live is not None and live > 0 else (closes[-1] if closes else None))
     if len(closes) < 10 or any(px is None or px <= 0 for px in closes[-10:]):
-        return {"state": "unchecked"}
+        return {"state": "unchecked", **marked}
     last = closes[-10:]
     ma5 = sum(last[-5:]) / 5.0
     ma10 = sum(last) / 10.0
     px = live if live is not None and live > 0 else last[-1]
     state = "above" if px > ma5 and px > ma10 else "below"
-    return {"state": state, "ma5": ma5, "ma10": ma10, "px": px}
+    return {"state": state, "ma5": ma5, "ma10": ma10, "px": px, **marked}
 
 
 def judge_holders(periods: list[dict]) -> dict:
@@ -271,6 +276,9 @@ def screen(day: str) -> dict:
                 "pct": quote.get("pct"),
                 "ma5": stats["ma5"],
                 "ma10": stats["ma10"],
+                "ma20": stats.get("ma20"),
+                "ma20_gap_pct": stats.get("ma20_gap_pct"),
+                "ma20_word": stats.get("ma20_word") or "未核",
                 "ts": quote.get("ts") or "",
             }
         )
@@ -326,6 +334,15 @@ def screen(day: str) -> dict:
     }
 
 
+def _ma20_text(row: dict) -> str:
+    word = row.get("ma20_word") or "未核"
+    if word == "未核":
+        return "20日 未核"
+    gap = row.get("ma20_gap_pct")
+    shown = None if gap is None else abs(gap)
+    return f"20日 {_fmt(row.get('ma20'), 2)} {word} {_fmt(shown, 2)}"
+
+
 def _fmt(value, digits: int) -> str:
     number = _num(value)
     if number is None:
@@ -354,6 +371,7 @@ def main() -> int:
                     _fmt(row["ma5"], 2),
                     "10日",
                     _fmt(row["ma10"], 2),
+                    _ma20_text(row),
                     cell.get("simple") or "未核",
                     cell.get("state") or "未核",
                 ]
