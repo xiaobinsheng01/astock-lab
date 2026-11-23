@@ -1,149 +1,416 @@
 {
-  "采集": "2026-11-17 09:09",
-  "来源": "qt.gtimg.cn",
-  "时段": "close",
-  "成长": "cold",
-  "科技": "cold",
-  "芯片": "cold",
-  "热门": [],
-  "收跌": [
-    "SOXX",
-    "SMH",
-    "XLK",
-    "XLE",
-    "XLI",
-    "XLC",
-    "XLY",
-    "XLB"
-  ],
-  "中间": [
-    "XLF",
-    "XLP",
-    "XLV",
-    "XLU",
-    "XLRE"
-  ],
-  "未核": [],
-  "状态": "现金收盘",
-  "进入W3": false,
-  "指数": {
-    "DJI": {
-      "收盘": 51608.17,
-      "前收": 52347.55,
-      "涨幅": -1.41,
-      "北京时间": "2026-11-17 06:28:10"
+  "采集": "2026-11-23 17:26",
+  "说明": "美股行业 ETF。常规交易时段待收盘；这一轮只记冷热，不进 W3。",
+  "模块": {
+    "rows": [
+      {
+        "symbol": "XLK",
+        "name": "科技",
+        "group": "growth_tech",
+        "a_share": "电子、信息",
+        "last": 149.01,
+        "prev": 160.69,
+        "vendor_pct": -7.27,
+        "state": "cold",
+        "pct": -7.27,
+        "reason": null
+      },
+      {
+        "symbol": "SMH",
+        "name": "半导体",
+        "group": "growth_chip",
+        "a_share": "科创芯片",
+        "last": 400.06,
+        "prev": 447.48,
+        "vendor_pct": -10.6,
+        "state": "cold",
+        "pct": -10.6,
+        "reason": null
+      },
+      {
+        "symbol": "SOXX",
+        "name": "费城半导体ETF",
+        "group": "growth_chip",
+        "a_share": "科创芯片",
+        "last": 123.4,
+        "prev": 137.95,
+        "vendor_pct": -10.55,
+        "state": "cold",
+        "pct": -10.55,
+        "reason": null
+      },
+      {
+        "symbol": "XLC",
+        "name": "通信服务",
+        "group": "communication",
+        "a_share": "通信",
+        "last": 100.03,
+        "prev": 102.76,
+        "vendor_pct": -2.66,
+        "state": "cold",
+        "pct": -2.66,
+        "reason": null
+      },
+      {
+        "symbol": "XLF",
+        "name": "金融",
+        "group": "financial",
+        "a_share": "银行对照，不进修复",
+        "last": 54.57,
+        "prev": 55.58,
+        "vendor_pct": -1.82,
+        "state": "cold",
+        "pct": -1.82,
+        "reason": null
+      },
+      {
+        "symbol": "XLE",
+        "name": "能源",
+        "group": "energy",
+        "a_share": "煤炭、能源，不进托住",
+        "last": 60.51,
+        "prev": 60.89,
+        "vendor_pct": -0.62,
+        "state": "middle",
+        "pct": -0.62,
+        "reason": null
+      },
+      {
+        "symbol": "XLB",
+        "name": "材料",
+        "group": "materials",
+        "a_share": "有色，不升成托",
+        "last": 48.34,
+        "prev": 49.42,
+        "vendor_pct": -2.19,
+        "state": "cold",
+        "pct": -2.19,
+        "reason": null
+      },
+      {
+        "symbol": "XLP",
+        "name": "必需消费",
+        "group": "staples",
+        "a_share": "食品饮料，不改第二托",
+        "last": 90.46,
+        "prev": 89.86,
+        "vendor_pct": 0.67,
+        "state": "middle",
+        "pct": 0.67,
+        "reason": null
+      },
+      {
+        "symbol": "XLY",
+        "name": "可选消费",
+        "group": "discretionary",
+        "a_share": "不进互斥",
+        "last": 112.46,
+        "prev": 115.88,
+        "vendor_pct": -2.95,
+        "state": "cold",
+        "pct": -2.95,
+        "reason": null
+      },
+      {
+        "symbol": "XLV",
+        "name": "医疗",
+        "group": "health",
+        "a_share": "医药，不进互斥",
+        "last": 177.24,
+        "prev": 177.46,
+        "vendor_pct": -0.12,
+        "state": "middle",
+        "pct": -0.12,
+        "reason": null
+      },
+      {
+        "symbol": "XLI",
+        "name": "工业",
+        "group": "industrial",
+        "a_share": "不进互斥",
+        "last": 156.37,
+        "prev": 161.36,
+        "vendor_pct": -3.09,
+        "state": "cold",
+        "pct": -3.09,
+        "reason": null
+      },
+      {
+        "symbol": "XLU",
+        "name": "公用事业",
+        "group": "utility",
+        "a_share": "不进托住",
+        "last": 42.69,
+        "prev": 43.01,
+        "vendor_pct": -0.74,
+        "state": "middle",
+        "pct": -0.74,
+        "reason": null
+      },
+      {
+        "symbol": "XLRE",
+        "name": "房地产",
+        "group": "real_estate",
+        "a_share": "不进互斥",
+        "last": 42.46,
+        "prev": 42.88,
+        "vendor_pct": -0.98,
+        "state": "middle",
+        "pct": -0.98,
+        "reason": null
+      }
+    ],
+    "hot": [],
+    "cold": [
+      "SMH",
+      "SOXX",
+      "XLK",
+      "XLI",
+      "XLY",
+      "XLC",
+      "XLB",
+      "XLF"
+    ],
+    "middle": [
+      "XLE",
+      "XLP",
+      "XLV",
+      "XLU",
+      "XLRE"
+    ],
+    "unchecked": [],
+    "growth_tech": "cold",
+    "growth_chip": "cold",
+    "growth": "cold",
+    "enters_w3": false,
+    "enters_repair": false,
+    "changes_score": false,
+    "session": "close",
+    "source": "qt.gtimg.cn",
+    "indexes": {
+      "DJI": {
+        "name": "道琼斯",
+        "code": ".DJI",
+        "last": 48147.33,
+        "prev": 49097.06,
+        "open": 49071.82,
+        "vendor_pct": -1.93,
+        "high": 49594.9,
+        "low": 47998.86,
+        "quote_et": "2026-11-20 16:35:59",
+        "quote_beijing": "2026-11-21 05:35:59",
+        "session": "close"
+      },
+      "INX": {
+        "name": "标普500",
+        "code": ".INX",
+        "last": 6910.39,
+        "prev": 7175.83,
+        "open": 7150.39,
+        "vendor_pct": -3.7,
+        "high": 7198.67,
+        "low": 6882.66,
+        "quote_et": "2026-11-20 16:35:54",
+        "quote_beijing": "2026-11-21 05:35:54",
+        "session": "close"
+      },
+      "IXIC": {
+        "name": "纳斯达克",
+        "code": ".IXIC",
+        "last": 22617.73,
+        "prev": 23879.2,
+        "open": 23592.67,
+        "vendor_pct": -5.28,
+        "high": 23837.76,
+        "low": 22513.01,
+        "quote_et": "2026-11-20 17:15:59",
+        "quote_beijing": "2026-11-21 06:15:59",
+        "session": "close"
+      },
+      "AAPL": {
+        "name": "苹果",
+        "code": "AAPL.OQ",
+        "last": 342.56,
+        "prev": 349.21,
+        "open": 352.87,
+        "vendor_pct": -1.9,
+        "high": 354.34,
+        "low": 340.56,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      }
     },
-    "INX": {
-      "收盘": 7416.59,
-      "前收": 7561.67,
-      "涨幅": -1.92,
-      "北京时间": "2026-11-17 06:22:10"
-    },
-    "IXIC": {
-      "收盘": 24509.76,
-      "前收": 25136.27,
-      "涨幅": -2.49,
-      "北京时间": "2026-11-17 06:15:59"
-    },
-    "AAPL": {
-      "收盘": 352.78,
-      "前收": 356.27,
-      "涨幅": -0.98,
-      "北京时间": "2026-11-17 05:00:01"
+    "quotes": {
+      "XLK": {
+        "name": "科技行业精选ETF-SPDR",
+        "code": "XLK.AM",
+        "last": 149.01,
+        "prev": 160.69,
+        "open": 158.71,
+        "vendor_pct": -7.27,
+        "high": 159.01,
+        "low": 148.09,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "SMH": {
+        "name": "半导体指数ETF-VanEck",
+        "code": "SMH.OQ",
+        "last": 400.06,
+        "prev": 447.48,
+        "open": 438.1,
+        "vendor_pct": -10.6,
+        "high": 438.44,
+        "low": 396.85,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "SOXX": {
+        "name": "费城半导体ETF-iShares",
+        "code": "SOXX.OQ",
+        "last": 123.4,
+        "prev": 137.95,
+        "open": 135.08,
+        "vendor_pct": -10.55,
+        "high": 135.41,
+        "low": 122.2,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLC": {
+        "name": "通讯服务精选行业ETF-SPDR",
+        "code": "XLC.AM",
+        "last": 100.03,
+        "prev": 102.76,
+        "open": 102.62,
+        "vendor_pct": -2.66,
+        "high": 103.94,
+        "low": 99.75,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLF": {
+        "name": "金融行业ETF-SPDR",
+        "code": "XLF.AM",
+        "last": 54.57,
+        "prev": 55.58,
+        "open": 55.68,
+        "vendor_pct": -1.82,
+        "high": 56.03,
+        "low": 54.43,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLE": {
+        "name": "能源精选ETF-SPDR",
+        "code": "XLE.AM",
+        "last": 60.51,
+        "prev": 60.89,
+        "open": 60.71,
+        "vendor_pct": -0.62,
+        "high": 61.5,
+        "low": 60.34,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLB": {
+        "name": "基础材料ETF-SPDR",
+        "code": "XLB.AM",
+        "last": 48.34,
+        "prev": 49.42,
+        "open": 49.42,
+        "vendor_pct": -2.19,
+        "high": 49.96,
+        "low": 48.21,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLP": {
+        "name": "必需消费品ETF-SPDR",
+        "code": "XLP.AM",
+        "last": 90.46,
+        "prev": 89.86,
+        "open": 90.93,
+        "vendor_pct": 0.67,
+        "high": 92.03,
+        "low": 90.32,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLY": {
+        "name": "非必需消费品ETF-SPDR",
+        "code": "XLY.AM",
+        "last": 112.46,
+        "prev": 115.88,
+        "open": 115.63,
+        "vendor_pct": -2.95,
+        "high": 117.02,
+        "low": 112.03,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLV": {
+        "name": "医疗保健精选行业ETF-SPDR",
+        "code": "XLV.AM",
+        "last": 177.24,
+        "prev": 177.46,
+        "open": 179.0,
+        "vendor_pct": -0.12,
+        "high": 180.64,
+        "low": 176.71,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLI": {
+        "name": "工业ETF-SPDR",
+        "code": "XLI.AM",
+        "last": 156.37,
+        "prev": 161.36,
+        "open": 160.91,
+        "vendor_pct": -3.09,
+        "high": 162.41,
+        "low": 155.7,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLU": {
+        "name": "公共事业ETF",
+        "code": "XLU.AM",
+        "last": 42.69,
+        "prev": 43.01,
+        "open": 43.27,
+        "vendor_pct": -0.74,
+        "high": 43.45,
+        "low": 42.63,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      },
+      "XLRE": {
+        "name": "房地产ETF-SPDR",
+        "code": "XLRE.AM",
+        "last": 42.46,
+        "prev": 42.88,
+        "open": 43.18,
+        "vendor_pct": -0.98,
+        "high": 43.42,
+        "low": 42.4,
+        "quote_et": "2026-11-20 16:00:04",
+        "quote_beijing": "2026-11-21 05:00:04",
+        "session": "close"
+      }
     }
-  },
-  "行业": {
-    "XLK": {
-      "收盘": 164.76,
-      "前收": 170.28,
-      "涨幅": -3.24,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "cold"
-    },
-    "SMH": {
-      "收盘": 461.9,
-      "前收": 486.75,
-      "涨幅": -5.11,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "cold"
-    },
-    "SOXX": {
-      "收盘": 141.22,
-      "前收": 149.3,
-      "涨幅": -5.41,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "cold"
-    },
-    "XLC": {
-      "收盘": 106.82,
-      "前收": 108.69,
-      "涨幅": -1.72,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "cold"
-    },
-    "XLF": {
-      "收盘": 58.18,
-      "前收": 58.68,
-      "涨幅": -0.85,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "middle"
-    },
-    "XLE": {
-      "收盘": 63.69,
-      "前收": 64.96,
-      "涨幅": -1.96,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "cold"
-    },
-    "XLB": {
-      "收盘": 51.47,
-      "前收": 52.23,
-      "涨幅": -1.46,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "cold"
-    },
-    "XLP": {
-      "收盘": 92.6,
-      "前收": 92.35,
-      "涨幅": 0.27,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "middle"
-    },
-    "XLY": {
-      "收盘": 118.15,
-      "前收": 119.98,
-      "涨幅": -1.53,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "cold"
-    },
-    "XLV": {
-      "收盘": 187.88,
-      "前收": 188.85,
-      "涨幅": -0.51,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "middle"
-    },
-    "XLI": {
-      "收盘": 165.66,
-      "前收": 168.78,
-      "涨幅": -1.85,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "cold"
-    },
-    "XLU": {
-      "收盘": 44.12,
-      "前收": 44.04,
-      "涨幅": 0.18,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "middle"
-    },
-    "XLRE": {
-      "收盘": 44.25,
-      "前收": 44.37,
-      "涨幅": -0.27,
-      "北京时间": "2026-11-17 05:00:01",
-      "状态": "middle"
-    }
-  },
-  "对照": "成长一侧偏冷。科技、两只半导体 ETF 都收跌。通信服务收跌。能源收跌。热门没有。行业 ETF 不进 W3。"
+  }
 }
