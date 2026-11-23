@@ -1,8 +1,7 @@
 {
   "mcpServers": {
     "aktools": {
-      "command": "uvx",
-      "args": ["--from", "aktools", "aktools-mcp"]
+      "command": ".cursor/aktools-mcp.sh"
     }
   }
 }
