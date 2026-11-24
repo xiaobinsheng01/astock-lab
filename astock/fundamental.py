@@ -445,7 +445,6 @@ def format_portrait(sheet: dict) -> str:
         "一句话定性: 待收集",
         "核心子公司与参股: 待收集",
         "可比公司: 待收集",
-        "受影响点: 待收集",
         "二、生意与报表",
         _line("最新报告期", f"{inst['报告期']} {inst['报告名称']}".strip()),
         "近3年及最新单季序列: 待收集",
@@ -481,7 +480,6 @@ def format_portrait(sheet: dict) -> str:
         "生意属性: 未填",
         "业绩驱动因子: 未填",
         "三、催化库",
-        "查询范围: 只查有效的受影响点",
         "行业供需与价格指标: 待收集",
         "正向催化: 待收集",
         "负向催化: 待收集",
@@ -532,8 +530,41 @@ def format_portrait(sheet: dict) -> str:
         "核心风险: 待收集",
         "仓位: 沿用硬门和操作令",
         "失效信号: 待收集",
+        "取数清单",
+        *[_format_query(row) for row in fetch_queries(sheet)],
     ]
     return "\n".join(lines)
+
+
+def fetch_queries(sheet: dict) -> list[dict]:
+    """Turn filled cells into the data and news this fetch must request.
+
+    A blank cell adds nothing. The industry name is not a query by itself.
+    """
+    code = sheet["代码"]
+    rows = [
+        {"来源": "代码", "查询": code, "资料": "行情", "刷新": "按日"},
+        {"来源": "代码", "查询": code, "资料": "定期报告与业绩预告", "刷新": "按期"},
+        {"来源": "代码", "查询": code, "资料": "公司公告", "刷新": "按消息"},
+        {"来源": "前十大", "查询": code, "资料": "前十大与股东户数", "刷新": "按期"},
+    ]
+    controller = sheet["主力"]["实际控制人"]
+    if controller not in (GAP, "", None):
+        rows.append({"来源": "实控人", "查询": controller, "资料": "控制权与股东公告", "刷新": "按消息"})
+    seen_connect = False
+    for holder in sheet["主力"]["前十大"].get("名单") or []:
+        if seen_connect or "香港中央结算" not in str(holder.get("名称") or ""):
+            continue
+        seen_connect = True
+        rows.append({"来源": "前十大", "查询": "香港中央结算", "资料": "北向持仓", "刷新": "按日"})
+    unlock = sheet["主力"]["解禁"]
+    if unlock.get("状态") == "有" and unlock.get("日期") not in (GAP, "", None):
+        rows.append({"来源": "解禁", "查询": unlock["日期"], "资料": "解禁规模", "刷新": "按期"})
+    return rows
+
+
+def _format_query(row: dict) -> str:
+    return f"查询: {row['来源']} {row['查询']} {row['资料']} {row['刷新']}"
 
 
 def _format_holders(block: dict) -> str:
@@ -713,8 +744,14 @@ def self_check() -> int:
     for title in ("一、身份档案", "二、生意与报表", "三、催化库", "四、筹码与交易者", "五、价格结构", "六、情景与失效"):
         check(title, title in text)
     check("empty cells stay pending", "待收集" in text and "未填" in text)
-    check("exposure point is the query field", "受影响点: 待收集" in text)
-    check("catalysts follow exposure points", "查询范围: 只查有效的受影响点" in text)
+    queries = fetch_queries(sheet)
+    check("code always asks for quotes and filings", any(row["资料"] == "行情" and row["查询"] == "000725" for row in queries))
+    check("named northbound holder becomes a query", any(row["查询"] == "香港中央结算" and row["资料"] == "北向持仓" for row in queries))
+    check("industry name is not a query", all(row["查询"] != sheet["身份"]["行业"] for row in queries))
+    check("printed list follows the cells", "取数清单" in text and "香港中央结算" in text)
+    empty_queries = fetch_queries(empty)
+    check("blank holder adds no northbound query", all(row["资料"] != "北向持仓" for row in empty_queries))
+    check("blank portrait still asks for its own filings", any(row["资料"] == "公司公告" for row in empty_queries))
     check("position rule is not a new number", "仓位: 沿用硬门和操作令" in text)
     for word in ("开仓", "加仓", "买入", "Buy"):
         check(f"no order word {word}", word not in text)
