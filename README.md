@@ -51,7 +51,7 @@ python -m astock lake hot --today 2026-11-10
 
 短名与上面的模块一一对应：`close`、`news`、`desk`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`、`csi300`、`dual50`。例如 `python -m astock close --fast`。`desk` 是市场资讯，不进 W1–W8。
 
-取数和分析分成两个窗口。`route` 打印这一轮读什么、跑什么。分析窗口不取数。资料湖在 `runtime/lake/`，不进 git。
+取数和分析分成两个窗口。`route` 打印这一轮读什么、跑什么。分析也跑 `跑` 里的命令。资料湖在 `runtime/lake/`，不进 git。
 
 离线核对：
 
