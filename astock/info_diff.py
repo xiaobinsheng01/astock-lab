@@ -22,9 +22,6 @@ URL_RE = re.compile(r"https?://[^\s|）<>\"']+")
 CLOCK_RE = re.compile(r"(20\d{2}-\d{2}-\d{2}[ T]\d{2}:\d{2}|\d{2}-\d{2}\s+\d{2}:\d{2})")
 DATE_RE = re.compile(r"20\d{2}[-/]\d{2}[-/]\d{2}")
 SECTOR_WORDS = ("电子", "芯片", "通信", "银行", "食品饮料", "煤炭")
-COMMENT_WORDS = ("访谈", "专访", "快评", "评论", "策略", "投资机构", "CEO", "基金经理", "首席", "综述", "券商")
-# An appointment is not a commentary just because the title says CEO.
-APPOINTMENT = ("复职", "出任", "任命", "黄仁勋", "英伟达", "台积电", "阿斯麦", "美光", "博通")
 COLLECT_START = "2026-11-03 09:00"
 PBC_HOME = "https://www.pbc.gov.cn/"
 PBC_OPEN_MARKET = "/125475/"
@@ -71,14 +68,6 @@ def _clock_text(clock: str, url: str) -> str:
     year = re.search(r"/(20\d{2})/", url)
     prefix = year.group(1) if year else "2026"
     return f"{prefix}-{found.group(1)}-{found.group(2)} {found.group(3)}:{found.group(4)}"
-
-
-def is_commentary(title: str) -> bool:
-    """Drop interviews and strategy notes. A CEO appointment still opens."""
-    words = COMMENT_WORDS
-    if any(word in title for word in APPOINTMENT):
-        words = tuple(word for word in COMMENT_WORDS if word != "CEO")
-    return any(word in title for word in words)
 
 
 def clock_from_url(url: str) -> str:
@@ -131,8 +120,6 @@ def classify_link(
         return None
     if url in ledger or _id_in_text(url, ledger):
         return None
-    if is_commentary(title):
-        return "不进W1–W5"
     if title and title in ledger:
         return "同一事实已记"
     clock = CLOCK_RE.search(nearby)
@@ -316,16 +303,10 @@ def main() -> int:
         mounts.append({"source": "央行公开市场", "url": PBC_HOME, "error": type(exc).__name__})
     overseas = []
     try:
-        for item in collect(8):
+        for item in collect():
             url = item.get("url") or ""
             if item.get("kind") == "unmounted":
                 mounts.append(item)
-                continue
-            title = item.get("title") or ""
-            if is_commentary(title):
-                # Keep the title; commentary is visible but never enters weights.
-                item["status"] = "不进W1–W5"
-                overseas.append(item)
                 continue
             if url and url not in ledger and not _id_in_text(url, ledger):
                 overseas.append(item)

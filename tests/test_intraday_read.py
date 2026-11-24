@@ -106,7 +106,7 @@ class DiffTest(unittest.TestCase):
                 "",
                 cursor="2026-11-05 10:25",
             ),
-            "不进W1–W5",
+            "缺口",
         )
         self.assertEqual(
             classify_link(

@@ -51,6 +51,8 @@ LINK_RE = re.compile(
     r"""<a[^>]+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)</a>""",
     re.IGNORECASE,
 )
+# A dated article path. Navigation and section hubs stay off the list.
+ARTICLE_URL = re.compile(r"/20\d{2}|detail_|t20\d{6}")
 
 
 def classify(title: str) -> str | None:
@@ -96,11 +98,17 @@ def items_from_html(html: str, source: str) -> list[dict]:
             continue
         if url.startswith("/"):
             url = "https://www.news.cn" + url
-        kind = classify(title)
-        if kind is None:
+        if len(title) < 4 or not ARTICLE_URL.search(url):
             continue
         seen.add(url)
-        out.append({"source": source, "kind": kind, "title": title, "url": url})
+        out.append(
+            {
+                "source": source,
+                "kind": classify(title) or "article",
+                "title": title,
+                "url": url,
+            }
+        )
     return out
 
 
@@ -110,29 +118,28 @@ def fetch(url: str, timeout: int = 20) -> str:
         return resp.read().decode("utf-8", "replace")
 
 
-def _round_robin(world: list[dict], fortune: list[dict], limit: int) -> list[dict]:
-    """Alternate sources so one list cannot consume every opening slot.
+def _round_robin(world: list[dict], fortune: list[dict], limit: int | None = None) -> list[dict]:
+    """Alternate the two lists. The same address is kept once.
 
-    The same title on both pages uses one slot. A reprint must not push
-    a later story past the eight-item cap.
+    `limit` None keeps every article. Titles are not a filter.
     """
     out: list[dict] = []
     seen: set[str] = set()
     pointers = [0, 0]
     lists = [world, fortune]
-    while len(out) < limit and any(pointers[i] < len(lists[i]) for i in (0, 1)):
+    while (limit is None or len(out) < limit) and any(
+        pointers[i] < len(lists[i]) for i in (0, 1)
+    ):
         progressed = False
         for index, rows in enumerate(lists):
-            if len(out) >= limit:
+            if limit is not None and len(out) >= limit:
                 break
             while pointers[index] < len(rows):
                 row = rows[pointers[index]]
                 pointers[index] += 1
-                title = row.get("title") or ""
                 url = row.get("url") or ""
-                if title in seen or url in seen:
+                if url and url in seen:
                     continue
-                seen.add(title)
                 if url:
                     seen.add(url)
                 out.append(row)
@@ -143,7 +150,7 @@ def _round_robin(world: list[dict], fortune: list[dict], limit: int) -> list[dic
     return out
 
 
-def collect(limit: int) -> list[dict]:
+def collect(limit: int | None = None) -> list[dict]:
     by_source: dict[str, list[dict]] = {}
     notes = []
     for source, url in (("world", WORLD_URL), ("fortune", FORTUNE_URL)):
@@ -162,13 +169,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="List overseas market items")
     parser.add_argument("--html", help="Parse this file instead of fetching")
     parser.add_argument("--source", default="world", help="Source name for --html")
-    parser.add_argument("--limit", type=int, default=8)
+    parser.add_argument("--limit", type=int, default=0, help="0 表示不截断")
     args = parser.parse_args(argv)
+    limit = None if args.limit <= 0 else args.limit
     if args.html:
         html = open(args.html, encoding="utf-8", errors="replace").read()
-        rows = items_from_html(html, args.source)[: args.limit]
+        rows = items_from_html(html, args.source)
+        if limit is not None:
+            rows = rows[:limit]
     else:
-        rows = collect(args.limit)
+        rows = collect(limit)
     json.dump(rows, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     return 0
