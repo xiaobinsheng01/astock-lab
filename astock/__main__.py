@@ -29,6 +29,7 @@ COMMANDS = {
     "csi300": "astock.csi300",
     "dual50": "astock.dual50",
     "state": "astock.state",
+    "portrait": "astock.fundamental",
 }
 
 
@@ -55,6 +56,7 @@ def _usage() -> str:
         "  cash      9:00 现金价                    python -m astock cash",
         "  csi300    沪深300现价和十日线            python -m astock csi300",
         "  dual50    双创50ETF华宝现价和十日线      python -m astock dual50",
+        "  portrait  一只股票的基本面画像           python -m astock fundamental",
     ]
     return "\n".join(lines)
 

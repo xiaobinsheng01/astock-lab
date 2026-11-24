@@ -46,16 +46,17 @@ python -m astock.dual50
 python -m astock yaogu --monitor
 python -m astock route --at "2026-11-10 10:00" --ask "盘中"
 python -m astock lake hot --today 2026-11-10
+python -m astock.fundamental 000725 --as-of 2026-11-25
 ```
 
-短名与上面的模块一一对应：`close`、`news`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`、`csi300`、`dual50`。例如 `python -m astock close --fast`。
+短名与上面的模块一一对应：`close`、`news`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`、`csi300`、`dual50`、`portrait`。例如 `python -m astock close --fast`。`portrait` 印一只股票的基本面画像。
 
 取数和分析分成两个窗口。`route` 打印这一轮读什么、跑什么。分析窗口不取数。资料湖在 `runtime/lake/`，不进 git。
 
 离线核对：
 
 ```bash
-python -m unittest tests.test_overseas_feed tests.test_intraday_read tests.test_route tests.test_sentence tests.test_lake tests.test_channels tests.test_yaogu tests.test_csi300 tests.test_dual50
+python -m unittest tests.test_overseas_feed tests.test_intraday_read tests.test_route tests.test_sentence tests.test_lake tests.test_channels tests.test_yaogu tests.test_csi300 tests.test_dual50 tests.test_fundamental
 python -m astock.close_inputs --self-check
 python -m astock.sector_drive --self-check
 python -m astock.us_sectors --self-check
