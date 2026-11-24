@@ -48,12 +48,12 @@ class FundamentalTest(unittest.TestCase):
         self.assertEqual(board_limit("600127", "ST金健")["涨跌幅上限"], 5)
 
     def test_route_opens_the_portrait(self) -> None:
-        row = plan("2026-11-25 01:07", "构建基本面画像")
+        row = plan("2026-11-25 01:07", "构建个股画像")
         self.assertEqual(row["窗口"], "取数")
-        self.assertEqual(row["轮次"], "基本面画像")
+        self.assertEqual(row["轮次"], "个股画像")
         self.assertEqual(row["跑"], "portrait")
         self.assertIn("行为分", row["不打开"])
-        self.assertIn("技术面", row["不打开"])
+        self.assertNotIn("技术面", row["不打开"])
         preview = plan("2026-11-25 08:30", "大盘预判")
         self.assertEqual(preview["轮次"], "预判")
 

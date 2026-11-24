@@ -85,13 +85,13 @@ def plan(at: str, ask: str) -> dict:
         row["轮次"] = "预判"
         row["读"] = "硬门、全天走势、发力、操作令、热层快照"
         return row
-    if "基本面画像" in text or "构建基本面" in text:
+    if any(word in text for word in ("基本面画像", "构建基本面", "个股画像")):
         row["窗口"] = "取数"
-        row["轮次"] = "基本面画像"
-        row["读"] = "基本面画像"
+        row["轮次"] = "个股画像"
+        row["读"] = "个股画像"
         row["跑"] = "portrait"
         row["缺快照"] = "未挂"
-        row["不打开"] = "技术面、市场情绪、行为分、下单"
+        row["不打开"] = "行为分、下单"
         return row
     if any(word in text for word in ("取数", "资料面", "取行情", "补缺口")):
         row["窗口"] = "取数"

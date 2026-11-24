@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Build one stock's fundamental portrait from public company facts.
+"""Print one stock portrait in six blocks that update on different clocks.
 
-The sheet is the company. Market news, the tape, and sentiment stay off it.
-A missing cell is 未核. Nothing here changes W1–W8 or places an order.
+Filled cells come from public pages already wired. Everything else stays
+待收集, and a sentence that needs those cells stays 未填. Nothing here
+changes W1–W8 or places an order.
 """
 
 from __future__ import annotations
@@ -418,6 +419,7 @@ def _line(label: str, value) -> str:
 
 
 def format_portrait(sheet: dict) -> str:
+    """Six blocks. A cell with no source stays 待收集. A conclusion stays 未填."""
     identity = sheet["身份"]
     inst = sheet["机构"]
     force = sheet["主力"]
@@ -425,41 +427,75 @@ def format_portrait(sheet: dict) -> str:
     count = force["股东户数"]
     org = force["机构合计"]
     lines = [
-        f"基本面画像 {sheet['代码']} {sheet['名称']}",
+        f"个股画像 {sheet['代码']} {sheet['名称']}",
         f"截止: {sheet['截止']}",
-        "这张表只写公司事实。市场信息、技术面、市场情绪另开。不进 W1–W8，不下单。",
-        "身份",
+        "六块按更新时钟分开。不进 W1–W8，不下单。缺资料写待收集，缺了资料的结论写未填。",
+        "一、身份档案",
         _line("公司全称", identity["公司全称"]),
+        _line("简称", sheet["名称"]),
+        _line("上市板块", hot["板块"]),
+        _line("涨跌幅上限", hot["涨跌幅上限"]),
+        _line("风险警示", hot["风险警示"]),
+        _line("曾用名", identity["曾用名"]),
         _line("行业", identity["行业"]),
         _line("证监会行业", identity["证监会行业"]),
         _line("地区", identity["地区"]),
         _line("上市日", identity["上市日"]),
         _line("证券类别", identity["证券类别"]),
-        _line("曾用名", identity["曾用名"]),
-        "机构",
-        _line("报告期", f"{inst['报告期']} {inst['报告名称']}".strip()),
-        _line("营业总收入亿元", inst["营业总收入亿元"]),
-        _line("营收同比", inst["营收同比"]),
-        _line("归母净利润亿元", inst["归母净利润亿元"]),
-        _line("归母同比", inst["归母同比"]),
-        _line("扣非净利润亿元", inst["扣非净利润亿元"]),
-        _line("扣非同比", inst["扣非同比"]),
-        _line("毛利率", inst["毛利率"]),
-        _line("净利率", inst["净利率"]),
-        _line("加权ROE", inst["加权ROE"]),
-        _line("扣非加权ROE", inst["扣非加权ROE"]),
-        _line("基本每股收益", inst["基本每股收益"]),
-        _line("每股净资产", inst["每股净资产"]),
+        "一句话定性: 待收集",
+        "核心子公司与参股: 待收集",
+        "可比公司: 待收集",
+        "二、生意与报表",
+        _line("最新报告期", f"{inst['报告期']} {inst['报告名称']}".strip()),
+        "近3年及最新单季序列: 待收集",
+        _line("最新营业总收入亿元", inst["营业总收入亿元"]),
+        _line("最新营收同比", inst["营收同比"]),
+        _line("最新归母净利润亿元", inst["归母净利润亿元"]),
+        _line("最新归母同比", inst["归母同比"]),
+        _line("最新扣非净利润亿元", inst["扣非净利润亿元"]),
+        _line("最新扣非同比", inst["扣非同比"]),
+        _line("最新毛利率", inst["毛利率"]),
+        _line("最新净利率", inst["净利率"]),
+        _line("最新加权ROE", inst["加权ROE"]),
+        _line("最新扣非加权ROE", inst["扣非加权ROE"]),
+        _line("业绩三格", inst["业绩"]),
+        _line("扣非拐点", inst["扣非拐点"]),
+        "收入结构: 待收集",
         _line("每股经营现金流", inst["每股经营现金流"]),
         _line("经营现金流占营收", inst["经营现金流占营收"]),
+        "利润与现金流是否匹配: 未填",
         _line("资产负债率", inst["资产负债率"]),
         _line("流动比率", inst["流动比率"]),
-        _line("业绩", inst["业绩"]),
-        _line("扣非拐点", inst["扣非拐点"]),
-        "主力",
+        "有息负债: 待收集",
+        "货币资金: 待收集",
+        "商誉: 待收集",
+        "应收账款: 待收集",
+        "存货: 待收集",
+        "业绩预告与说明会: 待收集",
+        "分红历史: 待收集",
+        "产品产能产量销量与定价模式: 待收集",
+        "上下游: 待收集",
+        "核心壁垒: 待收集",
+        "成本与盈亏平衡: 待收集",
+        "生意属性: 未填",
+        "业绩驱动因子: 未填",
+        "三、催化库",
+        "行业供需与价格指标: 待收集",
+        "正向催化: 待收集",
+        "负向催化: 待收集",
+        "龙头与海外对标动态: 待收集",
+        "监管与审批: 待收集",
+        "跟着商品还是跟着消息: 未填",
+        "四、筹码与交易者",
         _line("实际控制人", force["实际控制人"]),
         _line("实控人披露持股比例", force["实控人披露持股比例"]),
         _format_holders(force["前十大"]),
+        _line("总股本", hot["总股本"]),
+        _line("流通A股", hot["流通A股"]),
+        _line("限售股", hot["限售股"]),
+        _line("限售占总股本", hot["限售占总股本"]),
+        "自由流通市值: 待收集",
+        _format_unlock("下一笔解禁", force["解禁"]),
         _line("股东户数本期", count["本期"]),
         _line("股东户数", count["户数"]),
         _line("股东户数环比", count["环比"]),
@@ -470,19 +506,30 @@ def format_portrait(sheet: dict) -> str:
         _line("机构家数", org["家数"]),
         _line("机构占流通股比例", org["占流通股比例"]),
         _line("机构合计报告期", org["报告期"]),
-        _format_unlock("解禁", force["解禁"]),
-        "游资",
-        _line("板块", hot["板块"]),
-        _line("涨跌幅上限", hot["涨跌幅上限"]),
-        _line("风险警示", hot["风险警示"]),
-        _line("总股本", hot["总股本"]),
-        _line("流通A股", hot["流通A股"]),
-        _line("限售股", hot["限售股"]),
-        _line("限售占总股本", hot["限售占总股本"]),
-        _line("股东户数环比", hot["股东户数环比"]),
-        _line("户数方向", hot["户数方向"]),
-        _line("扣非拐点", hot["扣非拐点"]),
-        _format_unlock("解禁", hot["解禁"]),
+        "筹码峰与获利盘: 待收集",
+        "北向持仓变化: 待收集",
+        "公募私募持仓变化: 待收集",
+        "融资余额变化: 待收集",
+        "龙虎榜席位: 待收集",
+        "大宗交易: 待收集",
+        "换手基线: 待收集",
+        "股性样本: 待收集",
+        "五、价格结构",
+        "日线笔中枢背驰比较段: 待收集",
+        "30分钟结构: 待收集",
+        "5分钟结构: 待收集",
+        "关键价位: 待收集",
+        "背驰历史样本: 待收集",
+        "均线压制与支撑: 待收集",
+        "量价规律: 待收集",
+        "盯盘阈值与买卖观察区: 未填",
+        "六、情景与失效",
+        "乐观情景: 未填",
+        "中性情景: 未填",
+        "悲观情景: 未填",
+        "核心风险: 待收集",
+        "仓位: 沿用硬门和操作令",
+        "失效信号: 待收集",
     ]
     return "\n".join(lines)
 
@@ -661,7 +708,10 @@ def self_check() -> int:
     star = board_limit("688981", "中芯国际")
     check("star board twenty", star["板块"] == "科创板" and star["涨跌幅上限"] == 20)
     text = format_portrait(sheet)
-    check("sheet names the three readings", "机构" in text and "主力" in text and "游资" in text)
+    for title in ("一、身份档案", "二、生意与报表", "三、催化库", "四、筹码与交易者", "五、价格结构", "六、情景与失效"):
+        check(title, title in text)
+    check("empty cells stay pending", "待收集" in text and "未填" in text)
+    check("position rule is not a new number", "仓位: 沿用硬门和操作令" in text)
     for word in ("开仓", "加仓", "买入", "Buy"):
         check(f"no order word {word}", word not in text)
     if failed:
@@ -672,7 +722,7 @@ def self_check() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="印出一只股票的基本面画像。不下单。")
+    parser = argparse.ArgumentParser(description="印出一只股票的六块画像。不下单。")
     parser.add_argument("code", nargs="?", help="六位代码")
     parser.add_argument("--as-of", default="2026-11-25", help="解禁按这个日期看下一笔，北京时间的日期")
     parser.add_argument("--self-check", action="store_true")
