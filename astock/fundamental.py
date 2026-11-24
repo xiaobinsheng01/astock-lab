@@ -445,6 +445,7 @@ def format_portrait(sheet: dict) -> str:
         "一句话定性: 待收集",
         "核心子公司与参股: 待收集",
         "可比公司: 待收集",
+        "受影响点: 待收集",
         "二、生意与报表",
         _line("最新报告期", f"{inst['报告期']} {inst['报告名称']}".strip()),
         "近3年及最新单季序列: 待收集",
@@ -480,6 +481,7 @@ def format_portrait(sheet: dict) -> str:
         "生意属性: 未填",
         "业绩驱动因子: 未填",
         "三、催化库",
+        "查询范围: 只查有效的受影响点",
         "行业供需与价格指标: 待收集",
         "正向催化: 待收集",
         "负向催化: 待收集",
@@ -711,6 +713,8 @@ def self_check() -> int:
     for title in ("一、身份档案", "二、生意与报表", "三、催化库", "四、筹码与交易者", "五、价格结构", "六、情景与失效"):
         check(title, title in text)
     check("empty cells stay pending", "待收集" in text and "未填" in text)
+    check("exposure point is the query field", "受影响点: 待收集" in text)
+    check("catalysts follow exposure points", "查询范围: 只查有效的受影响点" in text)
     check("position rule is not a new number", "仓位: 沿用硬门和操作令" in text)
     for word in ("开仓", "加仓", "买入", "Buy"):
         check(f"no order word {word}", word not in text)
