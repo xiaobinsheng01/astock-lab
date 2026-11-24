@@ -49,10 +49,26 @@ class RouteTest(unittest.TestCase):
         row = plan("2026-11-10 15:15", "跑资料面")
         self.assertEqual(row["窗口"], "取数")
         self.assertIn("news", row["跑"])
+        self.assertIn("desk", row["跑"])
         self.assertIn("csi300", row["跑"])
         self.assertIn("dual50", row["跑"])
         self.assertEqual(row["缺快照"], "未挂")
         self.assertNotIn("五行", row["跑"])
+
+    def test_news_summary_is_its_own_data_window(self) -> None:
+        row = plan("2026-11-24 21:30", "总结市场资讯")
+        self.assertEqual(row["窗口"], "取数")
+        self.assertEqual(row["轮次"], "市场资讯")
+        self.assertEqual(row["跑"], "desk")
+        self.assertEqual(row["读"], "runtime/lake/hot/news/2026-11-24.md")
+        self.assertIn("原文", row["不打开"])
+        self.assertNotIn("五行", row["跑"])
+
+    def test_intraday_reads_news_without_fetching_it(self) -> None:
+        row = plan("2026-11-10 10:05", "盘中资讯")
+        self.assertEqual(row["窗口"], "分析")
+        self.assertIn("市场资讯", row["读"])
+        self.assertEqual(row["跑"], "无")
 
     def test_yaogu_row_has_no_score_word(self) -> None:
         text = format_plan(plan("2026-11-10 14:55", "妖股 14:55"))
