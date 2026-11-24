@@ -12,6 +12,7 @@ import sys
 COMMANDS = {
     "close": "astock.close_inputs",
     "news": "astock.info_diff",
+    "desk": "astock.news_desk",
     "brief": "astock.intraday_brief",
     "screen": "astock.intraday_screen",
     "drive": "astock.sector_drive",
@@ -39,6 +40,7 @@ def _usage() -> str:
         "命令只出数，不改规则，不下单。",
         "  close     收盘输入、W6、修复、对冲托住   python -m astock.close_inputs",
         "  news      资料面本窗与缺口               python -m astock.info_diff",
+        "  desk      市场资讯五类                   python -m astock.news_desk",
         "  brief     上证落在四条路径的哪一段       python -m astock.intraday_brief",
         "  screen    站上 5 日和 10 日的主板名字    python -m astock.intraday_screen",
         "  drive     发力板块和发力个股             python -m astock.sector_drive",

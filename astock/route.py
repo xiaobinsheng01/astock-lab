@@ -70,28 +70,38 @@ def plan(at: str, ask: str) -> dict:
         return row
     if "终分" in text:
         row["轮次"] = "终分"
-        row["读"] = "硬门、终分、预测、发力、缠论、热层快照"
+        row["读"] = "硬门、终分、预测、发力、缠论、热层快照、市场资讯"
         return row
     if "初分" in text:
         row["轮次"] = "初分"
-        row["读"] = "硬门、初分、预测、今日关注、缠论、热层快照"
+        row["读"] = "硬门、初分、预测、今日关注、缠论、热层快照、市场资讯"
         row["持仓"] = "没提供就写待提供"
         return row
     if "盘中" in text:
         row["轮次"] = f"盘中 {_slot(clock, text)}"
-        row["读"] = "硬门、盘中分析、持仓、路径、操作令、热层快照"
+        row["读"] = "硬门、盘中分析、持仓、路径、操作令、热层快照、市场资讯"
         return row
     if any(word in text for word in ("预判", "走势", "板块波动", "大盘")):
         row["轮次"] = "预判"
-        row["读"] = "硬门、全天走势、发力、操作令、热层快照"
+        row["读"] = "硬门、全天走势、发力、操作令、热层快照、市场资讯"
         return row
     if any(word in text for word in ("取数", "资料面", "取行情", "补缺口")):
         row["窗口"] = "取数"
         row["轮次"] = "资料面"
-        row["读"] = "热层写入位置"
-        row["跑"] = "news、close、csi300、dual50、drive、brief、screen、a50、cctv、cfbond、cninfo、cash"
+        row["读"] = "热层写入位置、市场资讯"
+        row["跑"] = "news、desk、close、csi300、dual50、drive、brief、screen、a50、cctv、cfbond、cninfo、cash"
         row["缺快照"] = "未挂"
         row["不打开"] = "五行、主仓重算、妖股分档"
+        row["持仓"] = ""
+        return row
+    if any(word in text for word in ("资讯", "总结")):
+        day = clock.strftime("%Y-%m-%d")
+        row["窗口"] = "取数"
+        row["轮次"] = "市场资讯"
+        row["读"] = f"runtime/lake/hot/news/{day}.md"
+        row["跑"] = "desk"
+        row["缺快照"] = "未挂"
+        row["不打开"] = "原文、权重、五行"
         row["持仓"] = ""
         return row
     row["轮次"] = "未识别"

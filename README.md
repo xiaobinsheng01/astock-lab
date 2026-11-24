@@ -40,6 +40,7 @@ python -m astock.intraday_brief --low 3590.80 --high 3686.17
 python -m astock.intraday_screen
 python -m astock.sector_drive
 python -m astock.overseas_feed
+python -m astock.news_desk --day 2026-11-24 --no-write
 python -m astock.us_sectors
 python -m astock.csi300
 python -m astock.dual50
@@ -48,14 +49,14 @@ python -m astock route --at "2026-11-10 10:00" --ask "盘中"
 python -m astock lake hot --today 2026-11-10
 ```
 
-短名与上面的模块一一对应：`close`、`news`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`、`csi300`、`dual50`。例如 `python -m astock close --fast`。
+短名与上面的模块一一对应：`close`、`news`、`desk`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`、`csi300`、`dual50`。例如 `python -m astock close --fast`。`desk` 是市场资讯，不进 W1–W8。
 
 取数和分析分成两个窗口。`route` 打印这一轮读什么、跑什么。分析窗口不取数。资料湖在 `runtime/lake/`，不进 git。
 
 离线核对：
 
 ```bash
-python -m unittest tests.test_overseas_feed tests.test_intraday_read tests.test_route tests.test_sentence tests.test_lake tests.test_channels tests.test_yaogu tests.test_csi300 tests.test_dual50
+python -m unittest tests.test_overseas_feed tests.test_intraday_read tests.test_route tests.test_sentence tests.test_lake tests.test_channels tests.test_yaogu tests.test_csi300 tests.test_dual50 tests.test_news_desk
 python -m astock.close_inputs --self-check
 python -m astock.sector_drive --self-check
 python -m astock.us_sectors --self-check
