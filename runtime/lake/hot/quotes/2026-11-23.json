@@ -14,8 +14,8 @@
   "成交额单位": "亿元",
   "行情时间": "2026-11-23 16:14:27",
   "来源": "qt.gtimg.cn",
-  "采集": "2026-11-23 17:26",
-  "说明": "收盘。高点 3544.6 越过 11月20日高点 3538.27。主路径 above_prior_high。",
+  "采集": "2026-11-24 07:37",
+  "说明": "7:33 未开盘。收盘数字仍是 11月23日 16:14。高点 3544.6 越过 11月20日高点 3538.27。",
   "篮子": [
     {
       "代码": "000001",
@@ -318,6 +318,8 @@
     }
   ],
   "close_inputs": {
+    "fast": false,
+    "gaps": [],
     "turnover": {
       "shanghai_yi": 7385.0,
       "shenzhen_yi": 8143.8,
@@ -326,26 +328,106 @@
       "ratio": 1.103,
       "source": "proxy.finance.qq.com/newfqkline"
     },
-    "w6": {
-      "dims": {
-        "breadth": 2,
-        "limit": 2,
-        "premium": 2,
-        "height": 1,
-        "volume": 1
-      },
-      "composite": 2,
-      "scored_n": 5
+    "breadth": {
+      "rise_count": 4306,
+      "fall_count": 780,
+      "stay_count": 127,
+      "limit_up_count": 150,
+      "limit_down_count": 7,
+      "limit_up_broken_count": 25,
+      "limit_up_broken_ratio": 0.14285714285714285,
+      "yesterday_limit_up_avg_pcp": 0.07427308557666665
     },
-    "sector_state": {
-      "state": "not_established",
-      "top_industry": "汽车零部",
-      "second_count": 15,
-      "height_in_leader": false,
-      "leader_index_pct": null,
-      "leader_prior_high": null,
-      "catalyst_dated": false,
-      "follow_through": "unchecked"
+    "breadth_close": {
+      "state": "上一交易日收盘",
+      "verified": true
+    },
+    "limit_up": {
+      "n": 146,
+      "top_hy": [
+        [
+          "汽车零部",
+          23
+        ],
+        [
+          "通用设备",
+          15
+        ],
+        [
+          "元件",
+          7
+        ],
+        [
+          "专用设备",
+          7
+        ],
+        [
+          "自动化设",
+          6
+        ],
+        [
+          "IT服务Ⅱ",
+          5
+        ],
+        [
+          "化学制品",
+          5
+        ],
+        [
+          "计算机设",
+          4
+        ]
+      ],
+      "height": [
+        {
+          "lbc": 5,
+          "name": "真视通",
+          "code": "002771",
+          "hy": "IT服务Ⅱ"
+        },
+        {
+          "lbc": 5,
+          "name": "盛剑科技",
+          "code": "603324",
+          "hy": "环保设备"
+        },
+        {
+          "lbc": 3,
+          "name": "中京电子",
+          "code": "002579",
+          "hy": "元件"
+        },
+        {
+          "lbc": 2,
+          "name": "德龙汇能",
+          "code": "000593",
+          "hy": "燃气Ⅱ"
+        },
+        {
+          "lbc": 2,
+          "name": "克来机电",
+          "code": "603960",
+          "hy": "汽车零部"
+        },
+        {
+          "lbc": 2,
+          "name": "荣联科技",
+          "code": "002642",
+          "hy": "IT服务Ⅱ"
+        },
+        {
+          "lbc": 2,
+          "name": "东方海洋",
+          "code": "002086",
+          "hy": "农产品加"
+        },
+        {
+          "lbc": 2,
+          "name": "东晶电子",
+          "code": "002199",
+          "hy": "元件"
+        }
+      ]
     },
     "repair": {
       "bank_pct": -0.82,
@@ -368,28 +450,89 @@
       "catl_counts": false,
       "repair_day": true
     },
-    "breadth": {
-      "rise_count": 4306,
-      "fall_count": 780,
-      "stay_count": 127,
-      "limit_up_count": 150,
-      "limit_down_count": 7,
-      "limit_up_broken_count": 25,
-      "limit_up_broken_ratio": 0.14285714285714285,
-      "yesterday_limit_up_avg_pcp": 0.07427308557666665
-    },
-    "breadth_close": {
-      "state": "已核15:00",
-      "verified": true
-    },
-    "next_session_band": {
-      "hard_low": 3476.65,
-      "hard_high": 3544.6,
-      "midpoint": 3510.625,
-      "narrow_low": 3476.65,
-      "narrow_high": 3510.625,
-      "above": 3544.6,
-      "below": 3476.65
+    "structure": {
+      "shanghai_pct": 0.15,
+      "bank_pct": -0.82,
+      "electronics_pct": 1.38,
+      "chip_pct": 0.17,
+      "telecom_pct": 3.22,
+      "chinext_pct": 3.08,
+      "star50_pct": -0.26,
+      "sse50_pct": -0.86,
+      "food_pct": -0.63,
+      "liquor_pct": 0.04,
+      "dividend_pct": -0.93,
+      "insurance_pct": -2.19,
+      "new_energy_pct": 0.77,
+      "hedge": "opposite",
+      "down_side": "banks",
+      "bank_cushion": "not_applicable",
+      "book_price": "not_applicable",
+      "national_team_share_anchor": "2026-09-30_unchanged",
+      "national_team_entities": [
+        "huijin_investment",
+        "huijin_asset_mgmt",
+        "csfc",
+        "guoxin",
+        "chengtong"
+      ],
+      "national_team_bank_anchor_entities": [
+        "huijin_investment",
+        "huijin_asset_mgmt",
+        "csfc"
+      ],
+      "operating_platform_share_as_of": "2026-09-30_top10",
+      "operating_platform_changes_open": false,
+      "national_team_excluded": [
+        "guojin_fund"
+      ],
+      "huijin_brokers_not_cushion": [
+        "000166",
+        "601066",
+        "601995",
+        "601336"
+      ],
+      "etf_creation_label": "broad_etf_creation_not_huijin_buy",
+      "food_cushion": "not_applicable",
+      "chinext_down_at_least_1pct": false,
+      "secondary_cushion": [],
+      "weights_fell_less": false,
+      "decision": "growth_led_rebound",
+      "hedge_leg": "bank_399986_vs_electronics_399811",
+      "insurance_on_bank_side": false,
+      "primary_cushion": "bank",
+      "second_cushion_on_shanghai_down": "food",
+      "sample_window": "2026-07-01_to_2026-11-03",
+      "not_cushions": [
+        "coal",
+        "energy",
+        "oil_gas",
+        "brokers",
+        "nonferrous",
+        "new_energy",
+        "insurance",
+        "power",
+        "transport",
+        "pharma",
+        "nonbank",
+        "media",
+        "software",
+        "appliance"
+      ],
+      "interval_gain_not_cushion": [
+        "liquor",
+        "dividend",
+        "coal",
+        "energy",
+        "oil_gas",
+        "insurance",
+        "power",
+        "transport",
+        "pharma",
+        "nonbank",
+        "appliance"
+      ],
+      "appliance_index": "gap_tencent_sina_eastmoney_public_2026-11-04"
     },
     "sell_checks": {
       "002081": {
@@ -412,6 +555,35 @@
         "pct": 10.03
       }
     },
-    "gaps": []
+    "w6": {
+      "dims": {
+        "breadth": 2,
+        "limit": 2,
+        "premium": 2,
+        "height": 1,
+        "volume": 1
+      },
+      "composite": 2,
+      "scored_n": 5
+    },
+    "next_session_band": {
+      "hard_low": 3476.65,
+      "hard_high": 3544.6,
+      "midpoint": 3510.625,
+      "narrow_low": 3476.65,
+      "narrow_high": 3510.625,
+      "above": 3544.6,
+      "below": 3476.65
+    },
+    "sector_state": {
+      "state": "not_established",
+      "top_industry": "汽车零部",
+      "second_count": 15,
+      "height_in_leader": false,
+      "leader_index_pct": null,
+      "leader_prior_high": null,
+      "catalyst_dated": false,
+      "follow_through": "unchecked"
+    }
   }
 }
