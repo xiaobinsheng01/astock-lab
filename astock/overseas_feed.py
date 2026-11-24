@@ -41,8 +41,11 @@ MARKET = (
 MARKET_PLACE = ("美国", "纽约", "欧洲", "伦敦", "东京", "香港", "日本")
 EARNINGS = ("营收", "净利润", "财报", "并购")
 EARNINGS_WHERE = ("美国", "美股", "纽约", "欧洲", "日本", "香港")
+# Named companies and people. A title that only says the name still belongs
+# on this list; "黄仁勋复职" does not contain 美股 or 公司.
+NAMES = ("黄仁勋", "英伟达", "台积电", "阿斯麦", "美光", "博通")
 # Overseas corporate / policy events that must not vanish from the desk.
-EVENT = ("人事", "管制", "制裁", "停产", "指引")
+EVENT = ("人事", "管制", "制裁", "停产", "指引", "复职", "出任", "任命")
 
 LINK_RE = re.compile(
     r"""<a[^>]+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)</a>""",
@@ -51,7 +54,7 @@ LINK_RE = re.compile(
 
 
 def classify(title: str) -> str | None:
-    """Return election_result, market_print, earnings, or None."""
+    """Return election_result, market_print, earnings, event, or None."""
     blocked = any(word in title for word in BLOCK)
     election = (
         not blocked
@@ -64,6 +67,12 @@ def classify(title: str) -> str | None:
         "股市" in title and any(word in title for word in MARKET_PLACE)
     ):
         return "market_print"
+    if "半导体" in title and any(word in title for word in ("指数", "费城")):
+        return "market_print"
+    if any(word in title for word in NAMES):
+        if blocked:
+            return None
+        return "event"
     if any(word in title for word in EARNINGS) and any(
         word in title for word in EARNINGS_WHERE
     ):
@@ -102,15 +111,35 @@ def fetch(url: str, timeout: int = 20) -> str:
 
 
 def _round_robin(world: list[dict], fortune: list[dict], limit: int) -> list[dict]:
-    """Alternate sources so one list cannot consume every opening slot."""
+    """Alternate sources so one list cannot consume every opening slot.
+
+    The same title on both pages uses one slot. A reprint must not push
+    a later story past the eight-item cap.
+    """
     out: list[dict] = []
-    index = 0
-    while len(out) < limit and (index < len(world) or index < len(fortune)):
-        if index < len(world):
-            out.append(world[index])
-        if len(out) < limit and index < len(fortune):
-            out.append(fortune[index])
-        index += 1
+    seen: set[str] = set()
+    pointers = [0, 0]
+    lists = [world, fortune]
+    while len(out) < limit and any(pointers[i] < len(lists[i]) for i in (0, 1)):
+        progressed = False
+        for index, rows in enumerate(lists):
+            if len(out) >= limit:
+                break
+            while pointers[index] < len(rows):
+                row = rows[pointers[index]]
+                pointers[index] += 1
+                title = row.get("title") or ""
+                url = row.get("url") or ""
+                if title in seen or url in seen:
+                    continue
+                seen.add(title)
+                if url:
+                    seen.add(url)
+                out.append(row)
+                progressed = True
+                break
+        if not progressed:
+            break
     return out
 
 

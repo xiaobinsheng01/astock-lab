@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from astock.overseas_feed import classify, items_from_html
+from astock.overseas_feed import _round_robin, classify, items_from_html
 
 FIXTURE = """
 <a href="https://www.news.cn/world/20261104/a58541d091da468eb33bce05b5cdb32e/c.html">美民主党连获关键州席位</a>
@@ -44,6 +44,10 @@ class ClassifyTest(unittest.TestCase):
         self.assertIsNone(classify("前三季度我国黄金产量同比下降 消费量同比微增"))
         self.assertEqual(classify("苹果公司财报营收"), None)
         self.assertEqual(classify("美国公司财报营收同比增长"), "earnings")
+        self.assertEqual(classify("黄仁勋复职"), "event")
+        self.assertEqual(classify("英伟达创历史级涨幅"), "event")
+        self.assertEqual(classify("费城半导体指数大涨"), "market_print")
+        self.assertIsNone(classify("若黄仁勋复职"))
 
     def test_fixture_order_and_dedupe(self) -> None:
         rows = items_from_html(FIXTURE, "world")
@@ -53,6 +57,15 @@ class ClassifyTest(unittest.TestCase):
         )
         urls = [row["url"] for row in rows]
         self.assertEqual(len(urls), len(set(urls)))
+
+    def test_same_title_on_two_lists_uses_one_slot(self) -> None:
+        world = [{"title": "国际金价反弹", "url": "https://www.news.cn/world/a"}]
+        fortune = [
+            {"title": "国际金价反弹", "url": "https://www.news.cn/fortune/b"},
+            {"title": "黄仁勋复职", "url": "https://www.news.cn/world/c"},
+        ]
+        rows = _round_robin(world, fortune, 2)
+        self.assertEqual([row["title"] for row in rows], ["国际金价反弹", "黄仁勋复职"])
 
 
 if __name__ == "__main__":
