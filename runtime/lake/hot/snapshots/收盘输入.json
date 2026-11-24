@@ -275,7 +275,7 @@
     "yesterday_limit_up_avg_pcp": 0.07427308557666665
   },
   "breadth_close": {
-    "state": "已核15:00",
+    "state": "上一交易日收盘",
     "verified": true
   },
   "limit_up": {
