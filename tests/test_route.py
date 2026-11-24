@@ -12,20 +12,21 @@ FORBIDDEN = ("是否取数", "Buy", "Overweight", "Hold", "Underweight", "Sell")
 
 
 class RouteTest(unittest.TestCase):
-    def test_analysis_does_not_ask_to_fetch(self) -> None:
+    def test_analysis_fetches_without_asking(self) -> None:
         for ask in ("终分", "初分", "盘中分析", "快评", "给这只写研报"):
             text = format_plan(plan("2026-11-10 10:00", ask))
             for word in FORBIDDEN:
                 self.assertNotIn(word, text)
             self.assertIn("窗口: 分析", text)
-            self.assertNotIn("跑: news", text)
+            self.assertNotIn("补抓", text)
+            self.assertNotIn("跑: 无", text)
 
-    def test_final_reads_snapshot_and_stops_when_missing(self) -> None:
+    def test_final_runs_the_close_and_the_news_desk(self) -> None:
         row = plan("2026-11-10 09:00", "终分")
         self.assertEqual(row["窗口"], "分析")
         self.assertEqual(row["轮次"], "终分")
-        self.assertEqual(row["跑"], "无")
-        self.assertEqual(row["缺快照"], "未跑")
+        self.assertEqual(row["跑"], "close、drive、news、desk")
+        self.assertEqual(row["缺快照"], "先跑")
 
     def test_prelim_asks_for_positions_only(self) -> None:
         text = format_plan(plan("2026-11-10 21:25", "初分"))
@@ -38,7 +39,8 @@ class RouteTest(unittest.TestCase):
         self.assertIn("操作令", intraday["读"])
         self.assertEqual(preview["轮次"], "预判")
         self.assertIn("操作令", preview["读"])
-        self.assertEqual(preview["跑"], "无")
+        self.assertEqual(preview["跑"], "news、desk、brief、screen")
+        self.assertEqual(intraday["跑"], "news、desk、brief、screen")
 
     def test_intraday_slot_follows_the_clock(self) -> None:
         self.assertEqual(plan("2026-11-10 10:05", "盘中")["轮次"], "盘中 10:00")
@@ -64,11 +66,12 @@ class RouteTest(unittest.TestCase):
         self.assertIn("原文", row["不打开"])
         self.assertNotIn("五行", row["跑"])
 
-    def test_intraday_reads_news_without_fetching_it(self) -> None:
+    def test_intraday_fetches_the_news_desk(self) -> None:
         row = plan("2026-11-10 10:05", "盘中资讯")
         self.assertEqual(row["窗口"], "分析")
         self.assertIn("市场资讯", row["读"])
-        self.assertEqual(row["跑"], "无")
+        self.assertIn("desk", row["跑"])
+        self.assertEqual(row["缺快照"], "先跑")
 
     def test_yaogu_row_has_no_score_word(self) -> None:
         text = format_plan(plan("2026-11-10 14:55", "妖股 14:55"))

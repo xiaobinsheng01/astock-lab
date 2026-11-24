@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Print which window this turn uses. No fetch, no score, no order.
+"""Print which window this turn uses. No score, no order.
 
-The analysis window reads snapshots that the data window already stored.
-It does not ask whether to fetch, and it does not open the article text.
+Analysis runs the commands for that round and writes the lake. It does not
+ask whether to fetch, and it does not open the article text.
 """
 
 from __future__ import annotations
@@ -45,45 +45,54 @@ def plan(at: str, ask: str) -> dict:
         "北京时间": stamp,
         "读": "",
         "跑": "无",
-        "缺快照": "未跑",
-        "不打开": "原文、总结模型、补抓",
+        "缺快照": "先跑",
+        "不打开": "原文、总结模型",
         "持仓": "",
     }
     if any(word in text for word in ("研报", "多空", "值不值得")):
         row["轮次"] = "研报"
         row["读"] = "收盘命令已经印出的行"
-        row["缺快照"] = "无"
-        row["不打开"] = "原文、总结模型、补抓、新采集"
+        row["跑"] = "close"
+        row["缺快照"] = "先跑"
         return row
     if any(word in text for word in ("妖股", "盘前五只", "封板", "14:55")):
         row["轮次"] = "妖股"
         row["读"] = "当日开高低收和量"
-        row["缺快照"] = "未跑"
-        row["不打开"] = "原文、总结模型、补抓、资料面、主仓重算"
+        row["跑"] = "yaogu"
+        row["缺快照"] = "先跑"
+        row["不打开"] = "原文、总结模型、资料面、主仓重算"
         return row
     if "快评" in text or "现在几点" in text:
         row["轮次"] = "快评"
         row["读"] = "最近一份终分或初分"
-        row["跑"] = "无"
-        row["缺快照"] = "未跑"
-        row["不打开"] = "原文、总结模型、补抓、三支全扫"
+        row["跑"] = "close"
+        row["缺快照"] = "先跑"
+        row["不打开"] = "原文、总结模型、三支全扫"
         return row
     if "终分" in text:
         row["轮次"] = "终分"
         row["读"] = "硬门、终分、预测、发力、缠论、热层快照、市场资讯"
+        row["跑"] = "close、drive、news、desk"
+        row["缺快照"] = "先跑"
         return row
     if "初分" in text:
         row["轮次"] = "初分"
         row["读"] = "硬门、初分、预测、今日关注、缠论、热层快照、市场资讯"
+        row["跑"] = "close、news、desk"
+        row["缺快照"] = "先跑"
         row["持仓"] = "没提供就写待提供"
         return row
     if "盘中" in text:
         row["轮次"] = f"盘中 {_slot(clock, text)}"
         row["读"] = "硬门、盘中分析、持仓、路径、操作令、热层快照、市场资讯"
+        row["跑"] = "news、desk、brief、screen"
+        row["缺快照"] = "先跑"
         return row
     if any(word in text for word in ("预判", "走势", "板块波动", "大盘")):
         row["轮次"] = "预判"
         row["读"] = "硬门、全天走势、发力、操作令、热层快照、市场资讯"
+        row["跑"] = "news、desk、brief、screen"
+        row["缺快照"] = "先跑"
         return row
     if any(word in text for word in ("取数", "资料面", "取行情", "补缺口")):
         row["窗口"] = "取数"
@@ -106,6 +115,7 @@ def plan(at: str, ask: str) -> dict:
         return row
     row["轮次"] = "未识别"
     row["读"] = "无"
+    row["跑"] = "无"
     row["缺快照"] = "未跑"
     return row
 
@@ -126,7 +136,7 @@ def format_plan(row: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="打印这一轮的窗口。不取数，不下单。")
+    parser = argparse.ArgumentParser(description="打印这一轮的窗口。本命令不下单。")
     parser.add_argument("--at", required=True, help="北京时间，例如 2026-11-10 10:00")
     parser.add_argument("--ask", required=True, help="用户原话")
     args = parser.parse_args(argv)
