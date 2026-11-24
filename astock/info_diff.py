@@ -22,10 +22,13 @@ URL_RE = re.compile(r"https?://[^\s|）<>\"']+")
 CLOCK_RE = re.compile(r"(20\d{2}-\d{2}-\d{2}[ T]\d{2}:\d{2}|\d{2}-\d{2}\s+\d{2}:\d{2})")
 DATE_RE = re.compile(r"20\d{2}[-/]\d{2}[-/]\d{2}")
 SECTOR_WORDS = ("电子", "芯片", "通信", "银行", "食品饮料", "煤炭")
-COMMENT_WORDS = ("访谈", "专访", "快评", "评论", "策略", "投资机构", "CEO", "基金经理", "首席", "综述", "券商")
 COLLECT_START = "2026-11-03 09:00"
+PBC_HOME = "https://www.pbc.gov.cn/"
+PBC_OPEN_MARKET = "/125475/"
+COMPACT_CLOCK = re.compile(r"/(20\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\d*/")
 
 PAGES = (
+    ("新华网财经首页", "https://www.news.cn/fortune/index.html", "https://www.news.cn"),
     ("新华网财经滚动", "https://www.news.cn/fortune/gundong/index.html", "https://www.news.cn"),
     ("新华网国际", "https://www.news.cn/world/index.html", "https://www.news.cn"),
     ("中证网", "https://www.cs.com.cn/", "https://www.cs.com.cn"),
@@ -67,6 +70,43 @@ def _clock_text(clock: str, url: str) -> str:
     return f"{prefix}-{found.group(1)}-{found.group(2)} {found.group(3)}:{found.group(4)}"
 
 
+def clock_from_url(url: str) -> str:
+    """PBOC puts YYYYMMDDHHMM into the announcement path."""
+    found = COMPACT_CLOCK.search(url or "")
+    if not found:
+        return ""
+    return f"{found.group(1)}-{found.group(2)}-{found.group(3)} {found.group(4)}:{found.group(5)}"
+
+
+def pbc_open_market(html: str, ledger: str, cursor: str = "") -> list[dict]:
+    """Open-market notices only. The path stamp is the publish clock."""
+    rows = []
+    seen: set[str] = set()
+    for match in LINK_RE.finditer(html or ""):
+        url = _abs_url(match.group(1), "https://www.pbc.gov.cn")
+        if PBC_OPEN_MARKET not in url or url in seen:
+            continue
+        clock = clock_from_url(url)
+        title = _clean_title(match.group(2)) or "公开市场业务交易公告"
+        if not clock:
+            continue
+        seen.add(url)
+        status = classify_link(title, url, clock, ledger, cursor=cursor)
+        if status is None:
+            continue
+        rows.append(
+            {
+                "source": "央行公开市场",
+                "title": title[:48],
+                "url": url,
+                "status": status,
+                "clock": clock,
+                "sector": False,
+            }
+        )
+    return rows
+
+
 def classify_link(
     title: str,
     url: str,
@@ -80,8 +120,6 @@ def classify_link(
         return None
     if url in ledger or _id_in_text(url, ledger):
         return None
-    if any(word in title for word in COMMENT_WORDS):
-        return "不进W1–W5"
     if title and title in ledger:
         return "同一事实已记"
     clock = CLOCK_RE.search(nearby)
@@ -255,19 +293,20 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001 — a dead list is a mount note, not a story
             mounts.append({"source": source, "url": url, "error": type(exc).__name__})
             continue
-        rows.extend(links_from_html(html, base, ledger, source, cursor=cursor))
+        got = links_from_html(html, base, ledger, source, cursor=cursor)
+        if source == "新华网财经首页" and not got:
+            mounts.append({"source": source, "url": url, "error": "未挂"})
+        rows.extend(got)
+    try:
+        rows.extend(pbc_open_market(_fetch(PBC_HOME), ledger, cursor))
+    except Exception as exc:  # noqa: BLE001 — a dead PBOC list is a mount note
+        mounts.append({"source": "央行公开市场", "url": PBC_HOME, "error": type(exc).__name__})
     overseas = []
     try:
-        for item in collect(8):
+        for item in collect():
             url = item.get("url") or ""
             if item.get("kind") == "unmounted":
                 mounts.append(item)
-                continue
-            title = item.get("title") or ""
-            if any(word in title for word in COMMENT_WORDS):
-                # Keep the title; commentary is visible but never enters weights.
-                item["status"] = "不进W1–W5"
-                overseas.append(item)
                 continue
             if url and url not in ledger and not _id_in_text(url, ledger):
                 overseas.append(item)

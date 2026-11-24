@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from astock.info_diff import article_fact, classify_link, links_from_html, pack
+from astock.info_diff import article_fact, classify_link, links_from_html, pack, pbc_open_market
 from astock.intraday_brief import pair, path_text, segment
 from astock.intraday_screen import assign, both_averages, judge_holders
 
@@ -106,7 +106,7 @@ class DiffTest(unittest.TestCase):
                 "",
                 cursor="2026-11-05 10:25",
             ),
-            "不进W1–W5",
+            "缺口",
         )
         self.assertEqual(
             classify_link(
@@ -130,6 +130,29 @@ class DiffTest(unittest.TestCase):
             ),
             "缺口",
         )
+
+    def test_a_ceo_appointment_is_not_commentary(self) -> None:
+        self.assertEqual(
+            classify_link(
+                "黄仁勋重新出任CEO",
+                "https://www.news.cn/world/20261123/eeeeeeeeeeeeeeeeeeee/c.html",
+                "2026-11-23 21:00",
+                "",
+                cursor="2026-11-23 18:00",
+            ),
+            "待打开",
+        )
+
+    def test_pbc_open_market_uses_the_path_clock(self) -> None:
+        html = """
+        <a href="/zhengcehuobisi/125207/125213/125431/125475/2026112309000142020/index.html">公开市场业务交易公告 [2026]第226号</a>
+        <a href="/tiaofasi/144941/3581332/2026101615242728034/index.html">中国人民银行公告〔2026〕第25号</a>
+        """
+        rows = pbc_open_market(html, "", cursor="2026-11-24 07:37")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["clock"], "2026-11-23 09:00")
+        self.assertEqual(rows[0]["status"], "缺口")
+        self.assertEqual(rows[0]["source"], "央行公开市场")
 
     def test_same_title_is_not_opened(self) -> None:
         self.assertEqual(

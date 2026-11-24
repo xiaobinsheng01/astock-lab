@@ -41,17 +41,22 @@ MARKET = (
 MARKET_PLACE = ("美国", "纽约", "欧洲", "伦敦", "东京", "香港", "日本")
 EARNINGS = ("营收", "净利润", "财报", "并购")
 EARNINGS_WHERE = ("美国", "美股", "纽约", "欧洲", "日本", "香港")
+# Named companies and people. A title that only says the name still belongs
+# on this list; "黄仁勋复职" does not contain 美股 or 公司.
+NAMES = ("黄仁勋", "英伟达", "台积电", "阿斯麦", "美光", "博通")
 # Overseas corporate / policy events that must not vanish from the desk.
-EVENT = ("人事", "管制", "制裁", "停产", "指引")
+EVENT = ("人事", "管制", "制裁", "停产", "指引", "复职", "出任", "任命")
 
 LINK_RE = re.compile(
     r"""<a[^>]+href=['"]([^'"]+)['"][^>]*>([\s\S]*?)</a>""",
     re.IGNORECASE,
 )
+# A dated article path. Navigation and section hubs stay off the list.
+ARTICLE_URL = re.compile(r"/20\d{2}|detail_|t20\d{6}")
 
 
 def classify(title: str) -> str | None:
-    """Return election_result, market_print, earnings, or None."""
+    """Return election_result, market_print, earnings, event, or None."""
     blocked = any(word in title for word in BLOCK)
     election = (
         not blocked
@@ -64,6 +69,12 @@ def classify(title: str) -> str | None:
         "股市" in title and any(word in title for word in MARKET_PLACE)
     ):
         return "market_print"
+    if "半导体" in title and any(word in title for word in ("指数", "费城")):
+        return "market_print"
+    if any(word in title for word in NAMES):
+        if blocked:
+            return None
+        return "event"
     if any(word in title for word in EARNINGS) and any(
         word in title for word in EARNINGS_WHERE
     ):
@@ -87,11 +98,17 @@ def items_from_html(html: str, source: str) -> list[dict]:
             continue
         if url.startswith("/"):
             url = "https://www.news.cn" + url
-        kind = classify(title)
-        if kind is None:
+        if len(title) < 4 or not ARTICLE_URL.search(url):
             continue
         seen.add(url)
-        out.append({"source": source, "kind": kind, "title": title, "url": url})
+        out.append(
+            {
+                "source": source,
+                "kind": classify(title) or "article",
+                "title": title,
+                "url": url,
+            }
+        )
     return out
 
 
@@ -101,20 +118,39 @@ def fetch(url: str, timeout: int = 20) -> str:
         return resp.read().decode("utf-8", "replace")
 
 
-def _round_robin(world: list[dict], fortune: list[dict], limit: int) -> list[dict]:
-    """Alternate sources so one list cannot consume every opening slot."""
+def _round_robin(world: list[dict], fortune: list[dict], limit: int | None = None) -> list[dict]:
+    """Alternate the two lists. The same address is kept once.
+
+    `limit` None keeps every article. Titles are not a filter.
+    """
     out: list[dict] = []
-    index = 0
-    while len(out) < limit and (index < len(world) or index < len(fortune)):
-        if index < len(world):
-            out.append(world[index])
-        if len(out) < limit and index < len(fortune):
-            out.append(fortune[index])
-        index += 1
+    seen: set[str] = set()
+    pointers = [0, 0]
+    lists = [world, fortune]
+    while (limit is None or len(out) < limit) and any(
+        pointers[i] < len(lists[i]) for i in (0, 1)
+    ):
+        progressed = False
+        for index, rows in enumerate(lists):
+            if limit is not None and len(out) >= limit:
+                break
+            while pointers[index] < len(rows):
+                row = rows[pointers[index]]
+                pointers[index] += 1
+                url = row.get("url") or ""
+                if url and url in seen:
+                    continue
+                if url:
+                    seen.add(url)
+                out.append(row)
+                progressed = True
+                break
+        if not progressed:
+            break
     return out
 
 
-def collect(limit: int) -> list[dict]:
+def collect(limit: int | None = None) -> list[dict]:
     by_source: dict[str, list[dict]] = {}
     notes = []
     for source, url in (("world", WORLD_URL), ("fortune", FORTUNE_URL)):
@@ -133,13 +169,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="List overseas market items")
     parser.add_argument("--html", help="Parse this file instead of fetching")
     parser.add_argument("--source", default="world", help="Source name for --html")
-    parser.add_argument("--limit", type=int, default=8)
+    parser.add_argument("--limit", type=int, default=0, help="0 表示不截断")
     args = parser.parse_args(argv)
+    limit = None if args.limit <= 0 else args.limit
     if args.html:
         html = open(args.html, encoding="utf-8", errors="replace").read()
-        rows = items_from_html(html, args.source)[: args.limit]
+        rows = items_from_html(html, args.source)
+        if limit is not None:
+            rows = rows[:limit]
     else:
-        rows = collect(args.limit)
+        rows = collect(limit)
     json.dump(rows, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     return 0
