@@ -9,6 +9,7 @@ changes W1–W8 or places an order.
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import sys
 
@@ -323,6 +324,13 @@ def portrait(bundle: dict, as_of: str) -> dict:
     }
 
 
+def _decode_body(raw: bytes) -> str:
+    """Eastmoney sometimes returns gzip without an encoding header."""
+    if raw[:2] == b"\x1f\x8b":
+        raw = gzip.decompress(raw)
+    return raw.decode("utf-8", "replace").lstrip("\ufeff")
+
+
 def _get_json(url: str):
     with open_url(
         url,
@@ -332,7 +340,7 @@ def _get_json(url: str):
         },
         timeout=20,
     ) as resp:
-        raw = resp.read().decode("utf-8", "replace").lstrip("\ufeff")
+        raw = _decode_body(resp.read())
     if raw.lstrip().startswith("<"):
         return None
     return json.loads(raw)

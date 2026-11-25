@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import gzip
 import unittest
 
 from astock.fundamental import (
+    _decode_body,
     board_limit,
     deducted_turn,
     format_portrait,
@@ -46,6 +48,11 @@ class FundamentalTest(unittest.TestCase):
         self.assertEqual(board_limit("688111", "金山办公")["涨跌幅上限"], 20)
         self.assertEqual(board_limit("830001", "北证示例")["板块"], "北交所")
         self.assertEqual(board_limit("600127", "ST金健")["涨跌幅上限"], 5)
+
+    def test_gzip_body_is_json(self) -> None:
+        raw = gzip.compress('{"REPORT_DATE": "2026-09-30"}'.encode())
+        self.assertEqual(_decode_body(raw), '{"REPORT_DATE": "2026-09-30"}')
+        self.assertEqual(_decode_body(b'{"a": 1}'), '{"a": 1}')
 
     def test_route_opens_the_portrait(self) -> None:
         row = plan("2026-11-25 01:07", "构建个股画像")
