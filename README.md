@@ -50,7 +50,7 @@ python -m astock lake hot --today 2026-11-10
 python -m astock.fundamental 000725 --as-of 2026-11-25
 ```
 
-短名与上面的模块一一对应：`close`、`news`、`desk`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`、`csi300`、`dual50`、`portrait`。例如 `python -m astock close --fast`。`desk` 是市场资讯，不进 W1–W8。`portrait` 印一只股票的六块画像。没有来源的格子写待收集。
+短名与上面的模块一一对应：`close`、`news`、`desk`、`brief`、`screen`、`drive`、`overseas`、`us`、`yaogu`、`route`、`lake`、`sentence`、`a50`、`cctv`、`cfbond`、`cninfo`、`cash`、`csi300`、`dual50`、`portrait`。例如 `python -m astock close --fast`。`desk` 是市场资讯，不进 W1–W8。`portrait` 印版本 1 的个股记录，`--book` 按手写持仓给每一只建同一套字段。没有来源的格子写待收集或未核。
 
 取数和分析分成两个窗口。`route` 打印这一轮读什么、跑什么。分析也跑 `跑` 里的命令。资料湖在 `runtime/lake/`，不进 git。
 
