@@ -6,9 +6,9 @@
 
 ## 两个窗口
 
-先跑 `python -m astock route --at <北京时间> --ask <原话>`。取数窗口才采集，写入 `runtime/lake/`。分析窗口只读已经印出的快照；缺了写未跑或未挂，不补抓，也不问要不要取数。初分只在持仓没提供时写「待提供」。不订阅定时。周末和放假也写行情，热层不留空档。下一交易日的终分读完，才把更早的热层文件搬进 `runtime/lake/archive/`。
+先跑 `python -m astock route --at <北京时间> --ask <原话>`。`跑` 里的命令这一轮就执行，分析也跑，写入 `runtime/lake/`。缺了先跑对应命令。源没挂上写未挂。不问要不要取数。初分只在持仓没提供时写「待提供」。不订阅定时。周末和放假也写行情，热层不留空档。下一交易日的终分读完，才把更早的热层文件搬进 `runtime/lake/archive/`。
 
-事实一句先跑 `python -m astock sentence`。片段已经是一句清楚的数字，就不再调用模型。否则只在取数窗口用 Composer 2.5 Fast 把片段收成一句，再交回 `sentence` 校验。句中数字在片段里对不上，这句作废。
+事实一句先跑 `python -m astock sentence`。片段已经是一句清楚的数字，就不再调用模型。否则这一轮用 Composer 2.5 Fast 把片段收成一句，再交回 `sentence` 校验。句中数字在片段里对不上，这句作废。
 
 ## 分层
 
@@ -29,7 +29,7 @@
 
 | 节 | 文件 |
 | --- | --- |
-| 外围、美股板块、外围市场资讯、沪深300、双创50ETF华宝、资料面增量、当轮使用、取数 | `rules/01-data.md` |
+| 外围、美股板块、外围市场资讯、市场资讯、沪深300、双创50ETF华宝、资料面增量、当轮使用、取数 | `rules/01-data.md` |
 | 大盘四态、W6 刻度、板块状态、硬门、缠论 | `rules/02-rules.md` |
 | 持仓结构、状态块、持仓 | `rules/03-account.md` |
 | 预测、指数区间、全天走势、个股四条路径、修复日、对冲与托住、月阶段、三类决策、国家队底仓、发力板块、发力个股、收盘对照、个股标记、今日关注 | `rules/04-judgment.md` |
@@ -54,17 +54,18 @@
 
 ## 这一轮读什么
 
-大盘预判、盘中分析、个股分析、初分和终分都按下面这张表做完。不为少读而少算。原始日线、股东页和记录全文留在脚本进程里，对话里用脚本印出的全部结果。表里点名的节要打开读完。没点名的层不读进对话。「跑」那一列只在取数窗口执行。分析窗口使用已经印出的结果；印出不在就写未跑或未挂，不在分析窗口补抓。
+大盘预判、盘中分析、个股分析、初分和终分都按下面这张表做完。不为少读而少算。原始日线、股东页和记录全文留在脚本进程里，对话里用脚本印出的全部结果。表里点名的节要打开读完。没点名的层不读进对话。「跑」那一列这一轮就执行，分析也跑。
 
-| 用户要的 | 读 | 跑（只在取数窗口；分析窗口不补抓） |
+| 用户要的 | 读 | 跑 |
 | --- | --- | --- |
-| 预判、接下来的走势、板块波动、大盘分析、截图上的异动 | 「硬门」；`04-judgment.md` 的「全天走势」「发力板块」「发力个股」「对冲与托住」「修复日」「三类决策」「个股四条路径」；`01-data.md` 的「当轮使用」；`07-operation.md` | `python -m astock.info_diff`，`python -m astock.intraday_brief`，`python -m astock.intraday_screen`。brief 的低点、高点和三个开关按当日事实取舍 |
-| 盘中分析，交易日 10:00、12:50、14:00 | 上一行这些节，再加 `05-execution.md` 的「盘中分析」、`03-account.md` 的「持仓结构」 | 同上。W1–W5 只在有新的官方数字时按「当轮使用」改那一格，这是计分时点，不是少算路径和个股。操作令按 `07-operation.md` 已到的时点附一句 |
+| 预判、接下来的走势、板块波动、大盘分析、截图上的异动 | 「硬门」；`04-judgment.md` 的「全天走势」「发力板块」「发力个股」「对冲与托住」「修复日」「三类决策」「个股四条路径」；`01-data.md` 的「当轮使用」「市场资讯」；`07-operation.md` | `python -m astock.info_diff`，`python -m astock.news_desk --day <当天>`，`python -m astock.intraday_brief`，`python -m astock.intraday_screen`。brief 的低点、高点和三个开关按当日事实取舍。市场资讯不打开原文 |
+| 盘中分析，交易日 10:00、12:50、14:00 | 上一行这些节，再加 `05-execution.md` 的「盘中分析」、`03-account.md` 的「持仓结构」 | 同上。W1–W5 只在有新的官方数字时按「当轮使用」改那一格，这是计分时点，不是少算路径和个股。操作令按 `07-operation.md` 已到的时点附一句。市场资讯不进 W1–W8 |
 | 个股分析，发力个股，或点名一只非持仓 | 「硬门」；`04-judgment.md` 的「发力个股」「个股四条路径」；`03-account.md` 的「持仓结构」 | `python -m astock.sector_drive`。五项入选门槛全部算，业绩格子照算，不作为入选门槛。答复按 `names` 里的全部过线名字写。用户点名的那一只和已提供持仓另写四条路径 |
 | 个股行情 | `05-execution.md` 的「个股行情」 | 不跑筛选脚本，除非用户同时要判断 |
-| 资料面两小时增量 | `01-data.md` 的「资料面增量」「外围市场资讯」「沪深300」「双创50ETF华宝」「当轮使用」 | `python -m astock.info_diff`，`python -m astock.csi300`，`python -m astock.dual50`。列表上看见的带时分新稿这一轮全部处理。沪深300和双创50ETF华宝不占这批新稿 |
-| 终分 | `05-execution.md` 的「终分」全文；`04-judgment.md` 的「预测」「发力板块」「发力个股」；「缠论」「硬门」；三块 canvas；产出用 `06-output.md` 的五行 | `python -m astock.close_inputs`，`python -m astock.sector_drive`，`python -m astock.info_diff`。行为分按完整顺序重算。发力个股用 `names` 的全部 |
-| 初分 | `05-execution.md` 的「初分」全文；`04-judgment.md` 的「预测」「今日关注」；「缠论」「硬门」；三块 canvas；产出用 `06-output.md` 的五行 | `python -m astock.close_inputs`，`python -m astock.info_diff`。行为分按完整顺序重算。发力个股名单留在次日终分 |
+| 资料面两小时增量 | `01-data.md` 的「资料面增量」「外围市场资讯」「市场资讯」「沪深300」「双创50ETF华宝」「当轮使用」 | `python -m astock.info_diff`，`python -m astock.news_desk --day <当天>`，`python -m astock.csi300`，`python -m astock.dual50`。列表上看见的带时分新稿这一轮全部处理。沪深300和双创50ETF华宝不占这批新稿。市场资讯不占这批新稿，不进权重 |
+| 资讯、总结市场资讯 | `01-data.md` 的「市场资讯」 | `python -m astock.news_desk --day <当天>`。不打开原文 |
+| 终分 | `05-execution.md` 的「终分」全文；`04-judgment.md` 的「预测」「发力板块」「发力个股」；「缠论」「硬门」；三块 canvas；产出用 `06-output.md` 的五行；`01-data.md` 的「市场资讯」 | `python -m astock.close_inputs`，`python -m astock.sector_drive`，`python -m astock.info_diff`，`python -m astock.news_desk --day <当天>`。行为分按完整顺序重算。发力个股用 `names` 的全部。市场资讯不进 W1–W8 |
+| 初分 | `05-execution.md` 的「初分」全文；`04-judgment.md` 的「预测」「今日关注」；「缠论」「硬门」；三块 canvas；产出用 `06-output.md` 的五行；`01-data.md` 的「市场资讯」 | `python -m astock.close_inputs`，`python -m astock.info_diff`，`python -m astock.news_desk --day <当天>`。行为分按完整顺序重算。发力个股名单留在次日终分。市场资讯不进 W1–W8 |
 | 盘中实时、快评 | `05-execution.md` 的「盘中实时」；`06-output.md` 的六行；`03-account.md` 的「状态块」 | 不全扫。只重算 W6 与板块只数 |
 | 个股画像 | `rules/08-portrait.md` | `python -m astock.fundamental <代码>`。六块都列出。没有来源的写待收集，没有资料的结论写未填 |
 
