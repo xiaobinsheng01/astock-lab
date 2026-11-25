@@ -94,6 +94,14 @@ def plan(at: str, ask: str) -> dict:
         row["跑"] = "news、desk、brief、screen"
         row["缺快照"] = "先跑"
         return row
+    if any(word in text for word in ("基本面画像", "构建基本面", "个股画像")):
+        row["窗口"] = "取数"
+        row["轮次"] = "个股画像"
+        row["读"] = "个股画像"
+        row["跑"] = "portrait"
+        row["缺快照"] = "未挂"
+        row["不打开"] = "行为分、下单"
+        return row
     if any(word in text for word in ("取数", "资料面", "取行情", "补缺口")):
         row["窗口"] = "取数"
         row["轮次"] = "资料面"
