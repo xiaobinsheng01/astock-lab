@@ -374,6 +374,10 @@ def fetch_bundle(code: str) -> dict:
         "https://emweb.securities.eastmoney.com/PC_HSF10/ShareholderResearch/PageAjax"
         f"?code={em}"
     )
+    business = _fetch_page(
+        "https://emweb.securities.eastmoney.com/PC_HSF10/BusinessAnalysis/PageAjax"
+        f"?code={em}"
+    )
     holders_payload = _fetch_page(
         "https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPT_F10_EH_HOLDERS"
         "&columns=END_DATE,HOLDER_RANK,HOLDER_NAME,HOLD_NUM_RATIO,HOLD_NUM_CHANGE"
@@ -390,6 +394,7 @@ def fetch_bundle(code: str) -> dict:
         "controller": (research or {}).get("sjkzr") if isinstance(research, dict) else None,
         "institutions": (research or {}).get("jgcc") if isinstance(research, dict) else None,
         "holders": _periods(holders_payload),
+        "business": (business or {}).get("zygcfx") if isinstance(business, dict) else None,
     }
 
 
@@ -763,6 +768,8 @@ def self_check() -> int:
     check("position rule is not a new number", "仓位: 沿用硬门和操作令" in text)
     for word in ("开仓", "加仓", "买入", "Buy"):
         check(f"no order word {word}", word not in text)
+    from astock.holding_book import self_check as book_self_check
+    check("holding record schema", book_self_check() == 0)
     if failed:
         print(failed, "failed")
         return 1
@@ -771,13 +778,38 @@ def self_check() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="印出一只股票的六块画像。不下单。")
-    parser.add_argument("code", nargs="?", help="六位代码")
+    parser = argparse.ArgumentParser(description="印出一只股票的画像记录。新代码用同一套字段。不下单。")
+    parser.add_argument("code", nargs="?", help="六位代码。不带代码时配合 --book 印整本持仓")
+    parser.add_argument("--book", action="store_true", help="按手写持仓给每一只建同一套记录")
     parser.add_argument("--as-of", default="2026-11-25", help="解禁按这个日期看下一笔，北京时间的日期")
     parser.add_argument("--self-check", action="store_true")
     args = parser.parse_args(argv)
     if args.self_check:
         return self_check()
+    from astock.holding_book import (
+        book_from_holdings,
+        build_record,
+        dump_book,
+        load_holdings,
+    )
+    if args.book:
+        doc = load_holdings()
+        bundles = {}
+        for holding in doc.get("持仓") or []:
+            if not isinstance(holding, dict) or not holding.get("代码"):
+                continue
+            code = normalize_code(str(holding["代码"]))
+            bundles[code] = fetch_bundle(code)
+        book = book_from_holdings(doc, bundles, args.as_of)
+        path = dump_book(book)
+        board = book["组合仪表盘"]
+        print(json.dumps({
+            "只数": board["只数"],
+            "权重口径": board["权重口径"],
+            "核心池": board["核心池"],
+            "文件": str(path),
+        }, ensure_ascii=False))
+        return 0
     if not args.code:
         parser.print_usage(sys.stderr)
         return 2
@@ -786,8 +818,21 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
-    sheet = portrait(fetch_bundle(code), args.as_of)
-    print(format_portrait(sheet))
+    holding = None
+    try:
+        doc = load_holdings()
+        shot_day = (doc.get("截图") or {}).get("行情日")
+        for row in doc.get("持仓") or []:
+            if isinstance(row, dict) and normalize_code(str(row.get("代码", ""))) == code:
+                holding = dict(row)
+                if shot_day:
+                    holding["截图行情日"] = shot_day
+                break
+    except (OSError, json.JSONDecodeError, ValueError):
+        holding = None
+    pool = "实际持仓" if holding else "观察"
+    record = build_record(code, fetch_bundle(code), holding, args.as_of, pool)
+    print(json.dumps(record, ensure_ascii=False, indent=2))
     return 0
 
 

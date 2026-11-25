@@ -27,6 +27,6 @@ description: "A股分析按模式取数，规则分层读取。项目在仓库�
 | 沪深300 | `python -m astock.csi300` |
 | 双创50ETF华宝 | `python -m astock.dual50` |
 | 这一轮哪个窗口 | `python -m astock route --at <北京时间> --ask <原话>` |
-| 个股画像 | `python -m astock.fundamental <代码>` |
+| 个股画像 | `python -m astock.fundamental <代码>`，整本持仓加 `--book` |
 | 热层和归档 | `python -m astock lake` |
 | 事实一句校验 | `python -m astock sentence` |
