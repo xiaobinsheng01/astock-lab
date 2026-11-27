@@ -7,7 +7,9 @@ import argparse
 import json
 import sys
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
+
+from astock.net import context as net_context
 
 SINA_URL = "https://hq.sinajs.cn/list=hf_CHA50CFD"
 BEIJING = timezone(timedelta(hours=8))
@@ -26,7 +28,7 @@ def fetch_live() -> dict:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=12) as resp:
+        with urllib.request.urlopen(req, timeout=12, context=net_context()) as resp:
             raw = resp.read().decode("gbk", "replace")
     except Exception as exc:  # noqa: BLE001 — caller writes 未挂 with the cause
         return {"error": type(exc).__name__}

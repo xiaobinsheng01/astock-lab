@@ -8,6 +8,8 @@ import json
 import sys
 import urllib.request
 
+from astock.net import context as net_context
+
 QUERY_URL = "https://www.cninfo.com.cn/new/hisAnnouncement/query"
 
 
@@ -78,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
                 data=body,
                 headers={"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"},
             )
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with urllib.request.urlopen(req, timeout=12, context=net_context()) as resp:
                 payload = json.loads(resp.read().decode("utf-8", "replace"))
             rows = payload.get("announcements") or []
             result = read_announcements(rows, with_org=bool(args.org), code=args.code)

@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import argparse
 
+import astock.holdings as holdings
 from astock.close_inputs import favored_path
 from astock.sector_drive import _fetch, _num
+from astock.util import market_symbol
 
 BASKET = (
     "000001",
@@ -27,23 +29,22 @@ BASKET = (
     "399998",
 )
 
-# 2026-11-26 手写持仓。后两个数是 2026-11-25 的低点、高点。
-HELD = (
-    ("000725", "京东方A", 4.39, 4.52),
-    ("002081", "金螳螂", 3.87, 4.24),
-    ("000559", "万向钱潮", 9.77, 10.79),
-    ("601061", "中信金属", 8.08, 8.39),
-    ("600715", "文投控股", 2.83, 3.22),
-    ("600327", "大东方", 4.77, 5.39),
-    ("601188", "龙江交通", 4.11, 4.66),
-)
-SH_PREFIX = {"000001", "000016", "000300", "000688", "000852", "000685", "000807", "000993", "000941"}
+# Prior-session low and high per code, used only to say which band the live
+# price sits in. The date is written next to the number: a stale band is a
+# dated band, not a silently wrong one. Codes missing here print 未核.
+BANDS: dict[str, tuple[str, float, float]] = {
+    "000725": ("2026-11-25", 4.39, 4.52),
+    "002081": ("2026-11-25", 3.87, 4.24),
+    "000559": ("2026-11-25", 9.77, 10.79),
+    "601061": ("2026-11-25", 8.08, 8.39),
+    "600715": ("2026-11-25", 2.83, 3.22),
+    "600327": ("2026-11-25", 4.77, 5.39),
+    "601188": ("2026-11-25", 4.11, 4.66),
+}
 
 
 def prefix(code: str) -> str:
-    if code.startswith(("5", "6", "9")) or code in SH_PREFIX:
-        return "sh" + code
-    return "sz" + code
+    return market_symbol(code)
 
 
 def segment(px: float, low: float, high: float) -> str:
@@ -75,7 +76,17 @@ def path_text(prior_high: float, session_high, above_older: bool, w3_negative: b
 
 
 def live_quotes(codes: list[str]) -> dict:
-    raw = _fetch("https://qt.gtimg.cn/q=" + ",".join(prefix(code) for code in codes)).decode("gbk", "replace")
+    """Quotes for the given codes. An unreachable host returns an empty map.
+
+    Callers print 未挂 for a name that has no row, so a dead network is a dated
+    gap in the output rather than a traceback.
+    """
+    if not codes:
+        return {}
+    try:
+        raw = _fetch("https://qt.gtimg.cn/q=" + ",".join(prefix(code) for code in codes)).decode("gbk", "replace")
+    except Exception:  # noqa: BLE001 — an unreachable quote host is not fatal here
+        return {}
     out = {}
     for chunk in raw.split(";"):
         if "~" not in chunk:
@@ -104,7 +115,10 @@ def main() -> int:
     parser.add_argument("--a50-gap", action="store_true")
     args = parser.parse_args()
     basket = live_quotes(list(BASKET))
-    held = live_quotes([code for code, *_ in HELD])
+    if not basket:
+        print("未挂：行情主机没有返回，落点、主路径和银行对电子本轮不写")
+    rows = holdings.book()
+    held = live_quotes([str(row["代码"]) for row in rows]) if rows else {}
     sh = basket.get("000001") or {}
     px, high, low = sh.get("px"), sh.get("high"), sh.get("low")
     bank = (basket.get("399986") or {}).get("pct")
@@ -112,21 +126,32 @@ def main() -> int:
     print(f"上证 {px} 涨跌 {sh.get('pct')} 高 {high} 低 {low} 开 {sh.get('open')} 时点 {sh.get('ts')}")
     if px is not None:
         print(f"落点 {segment(px, args.low, args.high)} 中点 {(args.low + args.high) / 2:.2f}")
+    else:
+        print("落点 未挂")
     print(f"主路径 {path_text(args.high, high, args.prev_close_above_older, args.w3_negative, args.a50_gap)}")
     print(f"银行与电子 {pair(bank, elec)}")
     for code in ("399986", "399811", "000685", "000993", "399389", "000688", "399006", "000852", "000807", "399998"):
         row = basket.get(code) or {}
         print(f"{code} {row.get('name')} {row.get('px')} {row.get('pct')} 高 {row.get('high')} 低 {row.get('low')}")
     print("持仓")
-    for code, _name, hard_low, hard_high in HELD:
-        row = held.get(code) or {}
-        place = ""
-        if row.get("px") is not None:
-            place = segment(row["px"], hard_low, hard_high)
+    if not rows:
+        print(f"无。{holdings.clock() or '未提供'}没有持仓文件")
+    for row in rows:
+        code = str(row["代码"])
+        quote = held.get(code) or {}
+        band = BANDS.get(code)
+        if band is None:
+            place = "未核"
+        else:
+            band_day, hard_low, hard_high = band
+            place = f"{segment(quote['px'], hard_low, hard_high)} {band_day}" if quote.get("px") is not None else "未核"
         crossed = ""
-        if row.get("high") is not None and row["high"] > hard_high:
-            crossed = f" 高点越过{hard_high}"
-        print(f"{code} {row.get('name')} {row.get('px')} {row.get('pct')} 高 {row.get('high')} 低 {row.get('low')} {place}{crossed}")
+        if band is not None and quote.get("high") is not None and quote["high"] > band[2]:
+            crossed = f" 高点越过{band[2]}"
+        print(
+            f"{code} {quote.get('name') or row.get('名称')} {quote.get('px')} {quote.get('pct')} "
+            f"高 {quote.get('high')} 低 {quote.get('low')} {place}{crossed}"
+        )
     return 0
 
 

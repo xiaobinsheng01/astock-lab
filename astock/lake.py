@@ -97,18 +97,66 @@ def write_news(root: Path, publish_date: str, fact: dict) -> dict:
 
 
 def write_bars(root: Path, code: str, rows: list[dict]) -> dict:
-    """Keep at least the latest ten sessions, and do not drop them on archive."""
-    ordered = sorted(rows, key=lambda item: item["date"])
-    kept = ordered[-10:]
+    """Merge one session's bars into the stored series. Never truncates history.
+
+    A ten-bar window cannot compute a 20-day or 250-day line, so keeping only the
+    last ten made every long-window test impossible. New rows are merged by date,
+    an existing date takes the newer row, and the series grows without bound.
+    """
     path = root / "bars" / f"{code}.json"
+    existing = _load(path, [])
+    by_date: dict[str, dict] = {}
+    for item in existing:
+        day = str(item.get("date") or "")
+        if day:
+            by_date[day] = item
+    for item in rows:
+        day = str(item.get("date") or "")
+        if day:
+            by_date[day] = item
+    kept = [by_date[day] for day in sorted(by_date)]
     _dump(path, kept)
-    return {"status": "已写", "kept": len(kept), "path": str(path)}
+    return {"status": "已写", "kept": len(kept), "added": len(rows), "path": str(path)}
+
+
+def read_bars(root: Path, code: str) -> list[dict]:
+    """Stored bars for one code, oldest first. A missing file is an empty list."""
+    return list(_load(root / "bars" / f"{code}.json", []))
+
+
+def archive_snapshots(root: Path, trade_date: str) -> list[str]:
+    """Copy dated judgment snapshots into the archive before they get overwritten.
+
+    `终分.json` and `初分.json` are single files: today's write destroys
+    yesterday's judgment, so nothing could ever be scored against what was
+    actually predicted. A snapshot named `<stem>.<clock>.json` is copied to
+    `archive/snapshots/<trade_date>/<name>`. The hot copy stays in place because
+    the desk keeps reading it. A record already archived for this date is not
+    copied twice.
+    """
+    hot_dir = root / "hot" / "snapshots"
+    if not hot_dir.exists():
+        return []
+    target_dir = root / "archive" / "snapshots" / trade_date
+    copied: list[str] = []
+    for path in sorted(hot_dir.glob("*.json")):
+        if path.stem == "手写持仓":
+            # The book is state, not a judgment for this session.
+            continue
+        if target_dir.joinpath(path.name).exists():
+            continue
+        target_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(str(path), str(target_dir / path.name))
+        copied.append(str(target_dir / path.name))
+    return copied
 
 
 def finish_final(root: Path, trade_date: str, *, trading_day: bool) -> dict:
     """Archive hot files dated before `trade_date` after that day's 终分.
 
-    A weekend or a day passed as not a trading day does not move files.
+    A weekend or a day passed as not a trading day does not move files. Judgment
+    snapshots are copied out of the hot layer first, because the next session
+    overwrites them in place.
     """
     if not trading_day or is_weekend(trade_date):
         return {"status": "非交易日", "moved": []}
@@ -116,7 +164,7 @@ def finish_final(root: Path, trade_date: str, *, trading_day: bool) -> dict:
     if trade_date not in finals:
         finals.append(trade_date)
         _dump(root / "finals.json", sorted(finals))
-    moved = []
+    moved = archive_snapshots(root, trade_date)
     for kind in ("quotes", "news"):
         hot_dir = root / "hot" / kind
         if not hot_dir.exists():

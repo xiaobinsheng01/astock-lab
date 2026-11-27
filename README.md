@@ -8,14 +8,14 @@ A 股行情分析交易台。尺子、算盘、当日底稿、会话钟分开，
 
 | 位置 | 是什么 | 谁改 |
 | --- | --- | --- |
-| `rules/` | 尺子。资料、规则、账户、判定、执行、产出六层 | 改判断只改对应层 |
+| `rules/` | 尺子。资料、规则、账户、判定、执行、产出、操作令、个股画像八层 | 改判断只改对应层 |
 | `astock/` | 算盘。行情、涨停、股东、新闻列表。标准库，无第三方依赖 | 改取数和分类 |
 | `runtime/` | 当日底稿。`info-ledger.md`、`cache/holders.json` | 跑起来才写，不进 git |
 | `desk.md` | 会话钟。这一轮读哪一层、跑哪条命令、写成五行还是六行 | 改时点，不改权重 |
 
 下层没齐，上层停写。任何模式先读 `rules/02-rules.md` 的「硬门」。
 
-## 六层
+## 八层
 
 | 层 | 文件 | 内容 |
 | --- | --- | --- |
@@ -26,6 +26,7 @@ A 股行情分析交易台。尺子、算盘、当日底稿、会话钟分开，
 | 5 执行 | `rules/05-execution.md` | 终分、初分、盘中、定时 |
 | 6 产出 | `rules/06-output.md` | 收盘五行或盘中六行 |
 | 7 操作令 | `rules/07-operation.md` | 总上限、外盘档、退潮、板块和操作句。不改 W1–W8 |
+| 8 个股画像 | `rules/08-portrait.md` | 身份、生意与报表、催化库、筹码、价格结构、情景。不改硬门 |
 
 ## 命令
 
@@ -44,9 +45,9 @@ python -m astock.news_desk --day 2026-11-24 --no-write
 python -m astock.us_sectors
 python -m astock.csi300
 python -m astock.dual50
-python -m astock yaogu --monitor
-python -m astock route --at "2026-11-10 10:00" --ask "盘中"
-python -m astock lake hot --today 2026-11-10
+python -m astock.yaogu --monitor
+python -m astock.route --at "2026-11-10 10:00" --ask "盘中"
+python -m astock.lake hot --today 2026-11-10
 python -m astock.fundamental 000725 --as-of 2026-11-25
 ```
 
@@ -57,7 +58,7 @@ python -m astock.fundamental 000725 --as-of 2026-11-25
 离线核对：
 
 ```bash
-python -m unittest tests.test_overseas_feed tests.test_intraday_read tests.test_route tests.test_sentence tests.test_lake tests.test_channels tests.test_yaogu tests.test_csi300 tests.test_dual50 tests.test_news_desk tests.test_fundamental
+python -m unittest discover -s tests
 python -m astock.close_inputs --self-check
 python -m astock.sector_drive --self-check
 python -m astock.us_sectors --self-check

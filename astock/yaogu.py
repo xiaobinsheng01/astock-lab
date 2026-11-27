@@ -13,18 +13,14 @@ import json
 import sys
 from typing import Any
 
+import astock.holdings as holdings
 from astock.close_inputs import round_fen
+from astock.util import MAIN_PREFIXES
 
 WINDOW_OPEN = "2026-12-01"
 WINDOW_SHUT = "2027-02-06"
-MAIN_PREFIXES = ("600", "601", "603", "605", "000", "001", "002", "003")
-# Desk hard gates. These names never enter the overnight queue.
-BLOCKED = {
-    "002081": "金螳螂",
-    "601061": "中信金属",
-    "000559": "万向钱潮",
-    "601868": "中国能建",
-}
+# The four hard-gate codes never enter the overnight queue. The list lives in
+# `astock.holdings.HARD_GATE` so the desk and the sleeve cannot drift apart.
 VR_OVERNIGHT = 1.3
 VR_VETO = 2.2
 
@@ -118,7 +114,7 @@ def classify(row: dict[str, Any]) -> dict[str, Any]:
         "first_close": first,
         "tier": "池外",
     }
-    if code in BLOCKED or not _mainboard(code) or _blocked_name(name):
+    if code in holdings.HARD_GATE or not _mainboard(code) or _blocked_name(name):
         return out
     if first is None or first >= 10:
         return out

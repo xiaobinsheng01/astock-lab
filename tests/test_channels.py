@@ -62,6 +62,20 @@ class CashTest(unittest.TestCase):
         item = assess_all([{"name": "原油", "price": None, "prev": 70, "clock": "09:00"}])["items"][0]
         self.assertEqual(item["status"], "缺口")
 
+    def test_every_named_row_is_built_or_stated_as_a_gap(self) -> None:
+        # NAMES has five rows; 美债 has no public host, so it must not vanish.
+        # Check the builder table only — no network in a unit test.
+        from astock import cash_close
+
+        self.assertEqual(cash_close.NAMES, ("美股现金", "美债", "原油", "沪铜", "美元"))
+        self.assertEqual(cash_close.NO_PUBLIC_HOST, frozenset({"美债"}))
+
+    def test_a_note_survives_assessment(self) -> None:
+        rows = [{"name": "美债", "price": None, "prev": None, "clock": "", "note": "写缺口"}]
+        item = assess_all(rows)["items"][0]
+        self.assertEqual(item["status"], "缺口")
+        self.assertEqual(item["note"], "写缺口")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,3 +15,7 @@ LAKE_ARCHIVE = LAKE / "archive"
 STATE_DIR = LAKE / "state"
 CURSOR_FILE = STATE_DIR / "cursor.json"
 WEIGHTS_FILE = STATE_DIR / "weights.json"
+# One book of positions. The quote basket and the intraday band table read it so
+# they cannot drift apart. The hard gate is not read from here on purpose: the
+# rules name those four codes, and that list must outlive a sale.
+HOLDINGS_FILE = LAKE / "hot" / "snapshots" / "手写持仓.json"

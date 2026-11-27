@@ -13,6 +13,8 @@ import re
 import sys
 import urllib.request
 
+from astock.net import context as net_context
+
 WORLD_URL = "https://www.news.cn/world/index.html"
 FORTUNE_URL = "https://www.news.cn/fortune/gundong/index.html"
 
@@ -97,7 +99,7 @@ def items_from_html(html: str, source: str) -> list[dict]:
 
 def fetch(url: str, timeout: int = 20) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=timeout, context=net_context()) as resp:
         return resp.read().decode("utf-8", "replace")
 
 

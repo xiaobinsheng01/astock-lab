@@ -7,33 +7,35 @@ import argparse
 import json
 import sys
 import urllib.request
-from datetime import datetime
-from zoneinfo import ZoneInfo
+
+from astock.net import context as net_context
 
 NAMES = ("美股现金", "美债", "原油", "沪铜", "美元")
+# Named in the rules but with no public host on the allowed channel list. This
+# is written out rather than left as a silent empty row, so the gap is visible.
+NO_PUBLIC_HOST = frozenset({"美债"})
 
 QUOTE_URL = "https://qt.gtimg.cn/q="
 
 
-def _split_tencent(raw_symbol: str) -> list[str]:
-    raw = urllib.request.urlopen(
+def _tencent_body(raw_symbol: str) -> str:
+    with urllib.request.urlopen(
         urllib.request.Request(
             QUOTE_URL + raw_symbol, headers={"User-Agent": "Mozilla/5.0"}
         ),
         timeout=12,
-    ).read().decode("gbk", "replace")
-    return raw.split("=", 1)[1].strip().strip(";").strip('"').split("~")
+        context=net_context(),
+    ) as response:
+        raw = response.read().decode("gbk", "replace")
+    return raw.split("=", 1)[1].strip().strip(";").strip('"')
+
+
+def _split_tencent(raw_symbol: str) -> list[str]:
+    return _tencent_body(raw_symbol).split("~")
 
 
 def _comma_symbol(raw_symbol: str) -> list[str]:
-    raw = urllib.request.urlopen(
-        urllib.request.Request(
-            QUOTE_URL + raw_symbol, headers={"User-Agent": "Mozilla/5.0"}
-        ),
-        timeout=12,
-    ).read().decode("gbk", "replace")
-    body = raw.split("=", 1)[1].strip().strip(";").strip('"')
-    return body.split(",")
+    return _tencent_body(raw_symbol).split(",")
 
 
 def _hf(row_symbol: str) -> dict:
@@ -82,8 +84,17 @@ def fetch_all() -> list[dict]:
     for name in NAMES:
         builder = builders.get(name)
         if builder is None:
-            # No public host found for this name on the allowed channel list.
-            rows.append({"name": name, "price": None, "prev": None, "clock": ""})
+            # 美债 has no public host on the allowed channel list, so it is a
+            # stated gap rather than a silently empty row.
+            rows.append(
+                {
+                    "name": name,
+                    "price": None,
+                    "prev": None,
+                    "clock": "",
+                    "note": "允许渠道里没有公开报价主机，写缺口",
+                }
+            )
             continue
         try:
             got = builder()
@@ -121,9 +132,12 @@ def assess_all(rows: list[dict]) -> dict:
     items = []
     for row in rows:
         try:
-            items.append(assess_one(row.get("name", ""), row.get("price"), row.get("prev"), row.get("clock") or ""))
+            item = assess_one(row.get("name", ""), row.get("price"), row.get("prev"), row.get("clock") or "")
         except ValueError as exc:
-            items.append({"name": row.get("name", ""), "status": "未挂", "text": str(exc)})
+            item = {"name": row.get("name", ""), "status": "未挂", "text": str(exc)}
+        if row.get("note"):
+            item["note"] = row["note"]
+        items.append(item)
     return {"status": "已列", "items": items}
 
 

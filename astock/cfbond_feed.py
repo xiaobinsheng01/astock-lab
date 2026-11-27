@@ -9,6 +9,8 @@ import re
 import sys
 import urllib.request
 
+from astock.net import context as net_context
+
 LIST_URL = "https://www.cfbond.com/zgcfw/ejy/yw/list.shtml"
 _ITEM = re.compile(
     r'data-time="([^"]*)"[^>]*data-source="([^"]*)"[^>]*>(.*?)</li>',
@@ -47,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         try:
             req = urllib.request.Request(LIST_URL, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with urllib.request.urlopen(req, timeout=12, context=net_context()) as resp:
                 html = resp.read().decode("utf-8", "replace")
             result = parse_cfbond(html)
         except Exception as exc:  # noqa: BLE001 — a dead list is 未挂

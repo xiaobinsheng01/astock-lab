@@ -9,6 +9,8 @@ import re
 import sys
 import urllib.request
 
+from astock.net import context as net_context
+
 PROGRAMS = ("第一时间", "正点财经", "交易时间", "天下财经", "经济信息联播")
 # Each finance program's own column page. The news-broadcast page is not opened.
 COLUMNS = (
@@ -68,7 +70,7 @@ def fetch_columns() -> list[dict]:
     for program, url in COLUMNS:
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with urllib.request.urlopen(req, timeout=12, context=net_context()) as resp:
                 html = resp.read().decode("utf-8", "replace")
             results.append(parse_program(html, program))
         except Exception as exc:  # noqa: BLE001 — a dead column is 未挂

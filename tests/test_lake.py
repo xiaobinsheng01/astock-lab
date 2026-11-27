@@ -7,7 +7,7 @@ import json
 import unittest
 from pathlib import Path
 
-from astock.lake import finish_final, hot_quote_dates, write_bars, write_news, write_quote
+from astock.lake import finish_final, hot_quote_dates, read_bars, write_bars, write_news, write_quote
 
 
 class HotDateTest(unittest.TestCase):
@@ -85,16 +85,55 @@ class StoreTest(unittest.TestCase):
             archived = (root / "archive" / "news" / "2026-11-08.jsonl").read_text(encoding="utf-8")
             self.assertIn("周六稿", archived)
 
-    def test_bars_keep_ten_sessions(self) -> None:
+    def test_bars_keep_full_history(self) -> None:
+        """A ten-bar cap made every 20/60/250-day test impossible, so there is no cap."""
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
-            rows = [{"date": f"2026-10-{day:02d}", "close": day} for day in range(1, 13)]
+            rows = [{"date": f"2026-{month:02d}-01", "close": month} for month in range(1, 13)]
             result = write_bars(Path(tmp), "000001", rows)
-            self.assertEqual(result["kept"], 10)
+            self.assertEqual(result["kept"], 12)
             kept = json.loads((Path(tmp) / "bars" / "000001.json").read_text(encoding="utf-8"))
-            self.assertEqual(kept[0]["date"], "2026-10-03")
-            self.assertEqual(kept[-1]["date"], "2026-10-12")
+            self.assertEqual(kept[0]["date"], "2026-01-01")
+            self.assertEqual(kept[-1]["date"], "2026-12-01")
+
+    def test_bars_merge_by_date_and_keep_old_sessions(self) -> None:
+        """A later write adds sessions; it does not replace the series with itself."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_bars(root, "000001", [{"date": "2026-11-03", "close": 1}, {"date": "2026-11-04", "close": 2}])
+            write_bars(root, "000001", [{"date": "2026-11-04", "close": 20}, {"date": "2026-11-05", "close": 3}])
+            kept = read_bars(root, "000001")
+            self.assertEqual([row["date"] for row in kept], ["2026-11-03", "2026-11-04", "2026-11-05"])
+            self.assertEqual(kept[1]["close"], 20)
+
+    def test_read_bars_of_a_missing_code_is_empty(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(read_bars(Path(tmp), "999999"), [])
+
+    def test_final_copies_snapshots_before_they_are_overwritten(self) -> None:
+        """终分/初分 are single files; the archive must hold yesterday's judgment."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snap = root / "hot" / "snapshots"
+            snap.mkdir(parents=True)
+            (snap / "终分.json").write_text('{"判断": "涨"}', encoding="utf-8")
+            (snap / "初分.json").write_text('{"判断": "平"}', encoding="utf-8")
+            (snap / "手写持仓.json").write_text('{"持仓": []}', encoding="utf-8")
+            finish_final(root, "2026-11-26", trading_day=True)
+            archived = root / "archive" / "snapshots" / "2026-11-26"
+            self.assertTrue((archived / "终分.json").exists())
+            self.assertTrue((archived / "初分.json").exists())
+            # The book is state, not a session judgment.
+            self.assertFalse((archived / "手写持仓.json").exists())
+            # The hot copy stays; the desk keeps reading it.
+            self.assertTrue((snap / "终分.json").exists())
 
 
 if __name__ == "__main__":

@@ -13,12 +13,13 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from astock.close_inputs import favored_path
+from astock.net import context as net_context
+from astock.util import MAIN_PREFIXES, num as _shared_num
 
 EXCESS_PP = 1.0
 CAP_YI = 800.0
 NEAR = 0.03
 MAX_NAMES = 10
-MAIN_PREFIXES = ("600", "601", "603", "605", "000", "001", "002", "003")
 COMPLEX_WORDS = (
     "有限合伙",
     "合伙企业",
@@ -63,16 +64,11 @@ INDUSTRIES = (
     },
 )
 BROAD_INDEXES = frozenset({"000001", "399001", "399006", "000688", "000852", "000300", "000016"})
-GROWTH_PATHS = frozenset({"above_prior_high", "upper_half_up"})
+GROWTH_PATHS = frozenset({"above_prior_high"})
 
 
 def _num(value):
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+    return _shared_num(value)
 
 
 def _norm_name(name: str) -> str:
@@ -94,7 +90,13 @@ def cap_ok(cap_yi) -> str:
 
 
 def near_ma(closes: list[float]) -> dict:
-    """Either the 5-day or the 10-day average may sit within 3%. Both are not required."""
+    """Either the 5-day or the 10-day average may sit within 3%. Both are not required.
+
+    The 终分 close rule averages the last 5/10 closes INCLUDING the session's own
+    close. The intraday screen is the one that excludes today and uses the live
+    price instead (see `intraday_screen.both_averages`). Those are two different
+    windows on purpose; do not unify them.
+    """
     if len(closes) < 10 or any(px is None or px <= 0 for px in closes[-10:]):
         return {"state": "unchecked", "ma5": None, "ma10": None, "gap": None}
     last = closes[-10:]
@@ -367,7 +369,7 @@ def recommend(rows: list[dict], held: set[str]) -> dict:
 
 def _fetch(url: str, timeout: int = 20) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as response:
+    with urllib.request.urlopen(req, timeout=timeout, context=net_context()) as response:
         return response.read()
 
 
@@ -599,7 +601,8 @@ def self_check() -> int:
         row["index"] == "399389" and row["state"] == "drive"
         for row in drive_sectors("above_prior_high", {"399389": 3.15}, 2.16)
     ))
-    check("missing stays unchecked", drive_sectors("upper_half_up", {}, 2.16)[0]["state"] == "unchecked")
+    check("missing stays unchecked", drive_sectors("above_prior_high", {}, 2.16)[0]["state"] == "unchecked")
+    check("a non-growth path prints nothing", drive_sectors("narrow_lower", {"399389": 3.15}, 2.16) == [])
     check("main board", main_board("002371") and main_board("600330") and not main_board("300750") and not main_board("688981"))
     check("cap", cap_ok(799.99) == "pass" and cap_ok(800) == "fail" and cap_ok(None) == "unchecked")
     closes = [10] * 9 + [10.2]

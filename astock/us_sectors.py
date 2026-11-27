@@ -13,6 +13,8 @@ import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from astock.net import context as net_context
+
 HOT_PCT = 1.0
 COLD_PCT = -1.0
 PCT_TOLERANCE = 0.05
@@ -169,7 +171,7 @@ def _parse_tencent(body: str) -> dict:
 def fetch() -> dict:
     codes = [f"us{symbol}" for symbol, *_rest in SLEEVES] + [f"us{symbol}" for symbol in INDEXES]
     req = urllib.request.Request(QUOTE_URL + ",".join(codes), headers={"User-Agent": "Mozilla/5.0"})
-    raw = urllib.request.urlopen(req, timeout=20).read().decode("gbk", errors="replace")
+    raw = urllib.request.urlopen(req, timeout=20, context=net_context()).read().decode("gbk", errors="replace")
     parsed = {}
     for line in raw.split(";"):
         line = line.strip()

@@ -25,10 +25,10 @@ from astock.sector_drive import (
     fetch_closes,
     main_board,
 )
+from astock.util import market_symbol
 
 RULE = "holder-v1"
 CACHE = HOLDERS_CACHE
-SH_PREFIX = {"000001", "000016", "000300", "000688", "000852", "000685", "000807", "000993", "000941"}
 
 
 def trade_day() -> str:
@@ -56,7 +56,11 @@ def assign(members: dict[str, list[dict]]) -> dict[str, list[dict]]:
 
 
 def both_averages(closes: list[float], live) -> dict:
-    """Live price must clear both averages. Today's close is inside the averages."""
+    """Live price must clear both averages, computed through the prior bars.
+
+    Today's own bar stays out of the averages and its live price is the only
+    current-day input, so today is not counted twice.
+    """
     if len(closes) < 10 or any(px is None or px <= 0 for px in closes[-10:]):
         return {"state": "unchecked"}
     last = closes[-10:]
@@ -183,9 +187,7 @@ def holder_cell(code: str, cache: dict) -> dict:
 
 
 def _prefix(code: str) -> str:
-    if code.startswith(("5", "6", "9")) or code in SH_PREFIX:
-        return "sh" + code
-    return "sz" + code
+    return market_symbol(code)
 
 
 def fetch_quotes(codes: list[str]) -> dict:

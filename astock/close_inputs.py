@@ -12,9 +12,14 @@ import json
 import sys
 import urllib.request
 
+import astock.holdings as holdings
 from astock.net import context as net_context
+from astock.util import market_symbol, round_half_up
+from astock.util import num as util_num
 
-CODES = [
+# Index and sleeve quotes. Positions are appended from the book, so the basket
+# cannot fall behind a hand-written holdings file.
+BASE_CODES = [
     "sh000001",
     "sz399001",
     "sz399006",
@@ -35,10 +40,20 @@ CODES = [
     "sh000993",
     "sh600519",
     "sz300750",
-    "sz002081",
-    "sh601061",
-    "sz000559",
 ]
+
+
+def quote_codes() -> list[str]:
+    """The fixed basket plus every held code, in one deduplicated list."""
+    ordered = list(BASE_CODES)
+    for code in holdings.codes():
+        symbol = market_symbol(code)
+        if symbol not in ordered:
+            ordered.append(symbol)
+    return ordered
+
+
+CODES = quote_codes()
 
 
 def fetch(url: str, timeout: int = 15) -> bytes:
@@ -54,10 +69,7 @@ def fetch(url: str, timeout: int = 15) -> bytes:
 
 
 def num(value: str):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+    return util_num(value)
 
 
 def quotes() -> dict:
@@ -79,9 +91,29 @@ def quotes() -> dict:
             "high": num(parts[33]),
             "low": num(parts[34]),
             "amount_yi": None if amount_wan is None else round(amount_wan / 10000, 2),
+            # The five fields below were always in the payload and never read.
+            # They carry turnover and valuation, which the volume and valuation
+            # rules need. An index has no turnover/PE, so a 0 from the host is
+            # stored as None rather than reported as a real zero.
+            "turnover_pct": _positive(parts, 38),
+            "pe": _positive(parts, 39),
+            "float_mv_yi": _positive(parts, 44),
+            "total_mv_yi": _positive(parts, 45),
+            "pb": _positive(parts, 46),
+            "volume_ratio": _positive(parts, 49),
             "ts": parts[30],
         }
     return out
+
+
+def _positive(parts: list[str], index: int):
+    """Field at `index` when it is a positive number, otherwise None."""
+    if len(parts) <= index:
+        return None
+    value = num(parts[index])
+    if value is None or value <= 0:
+        return None
+    return value
 
 
 def breadth() -> dict:
@@ -196,7 +228,8 @@ def w6_scores(
         if len(scored) == 5 and sum(item >= 1 for item in scored) >= 3 and all(item > -1 for item in scored):
             composite = 2
         else:
-            composite = max(-2, min(2, round(sum(scored) / len(scored))))
+            # 四舍五入, not the bankers' rounding of the built-in round().
+            composite = max(-2, min(2, round_half_up(sum(scored) / len(scored))))
     return {"dims": dims, "composite": composite, "scored_n": len(scored)}
 
 
@@ -626,32 +659,46 @@ def structure(q: dict) -> dict:
 
 
 def sell_checks(q: dict) -> dict:
-    jt = q.get("002081") or {}
-    zx = q.get("601061") or {}
-    wx = q.get("000559") or {}
-    return {
-        "002081": {
-            "open": jt.get("open"),
-            "high": jt.get("high"),
-            "low": jt.get("low"),
-            "px": jt.get("px"),
-            "open_at_or_above_3_88": (jt.get("open") or 0) >= 3.88,
-            "traded_through_3_88_4_00": (
-                jt.get("high") is not None
-                and jt.get("low") is not None
-                and jt["high"] >= 3.88
-                and jt["low"] <= 4.00
+    """The three hard-gate sell rows. Held codes that are not gated add a plain quote.
+
+    The gate prices are the rules', not the book's. Every other position is
+    listed with its quote so the close table does not silently lose a name.
+    """
+    out: dict = {
+        "002081": _gated_row(q.get("002081") or {}, {
+            "open_at_or_above_3_88": lambda row: (row.get("open") or 0) >= 3.88,
+            "traded_through_3_88_4_00": lambda row: (
+                row.get("high") is not None
+                and row.get("low") is not None
+                and row["high"] >= 3.88
+                and row["low"] <= 4.00
             ),
-        },
-        "601061": {
-            "open": zx.get("open"),
-            "high": zx.get("high"),
-            "px": zx.get("px"),
-            "close_below_9_55": zx.get("px") is not None and zx["px"] < 9.55,
-            "high_below_9_55": zx.get("high") is not None and zx["high"] < 9.55,
-        },
-        "000559": {"px": wx.get("px"), "pct": wx.get("pct")},
+        }),
+        "601061": _gated_row(q.get("601061") or {}, {
+            "close_below_9_55": lambda row: row.get("px") is not None and row["px"] < 9.55,
+            "high_below_9_55": lambda row: row.get("high") is not None and row["high"] < 9.55,
+        }),
+        "000559": {"px": (q.get("000559") or {}).get("px"), "pct": (q.get("000559") or {}).get("pct")},
     }
+    for code in holdings.codes():
+        if code in out:
+            continue
+        row = q.get(code) or {}
+        out[code] = {"name": row.get("name"), "px": row.get("px"), "pct": row.get("pct")}
+    return out
+
+
+def _gated_row(row: dict, flags: dict) -> dict:
+    out = {
+        "open": row.get("open"),
+        "high": row.get("high"),
+        "low": row.get("low"),
+        "px": row.get("px"),
+        "pct": row.get("pct"),
+    }
+    for name, test in flags.items():
+        out[name] = test(row)
+    return out
 
 
 def _q(pcts: dict) -> dict:
@@ -659,7 +706,12 @@ def _q(pcts: dict) -> dict:
 
 
 def index_decision(s: dict) -> str | None:
-    """One close sentence from the hedge and cushion flags. Does not change the score."""
+    """One close sentence, and only the three the rules name.
+
+    `rules/02-rules.md` item 10 fixes the closed set: growth down with the bank
+    holding, growth leading a rebound, or the same direction with the bank not
+    holding. Anything else gets no sentence rather than a new label.
+    """
     hedge = s.get("hedge")
     shanghai = s.get("shanghai_pct")
     if hedge is None or shanghai is None:
@@ -669,16 +721,13 @@ def index_decision(s: dict) -> str | None:
     growth_up = (electronics is not None and electronics > 0) or (
         telecom is not None and telecom > 0
     )
-    rally = shanghai > 0 and growth_up
     if hedge == "opposite" and s.get("down_side") == "growth" and s.get("bank_cushion") == "bank_held":
         return "growth_down_bank_held"
-    if hedge == "opposite" and s.get("down_side") == "banks" and rally:
+    if hedge == "opposite" and s.get("down_side") == "banks" and shanghai > 0 and growth_up:
         return "growth_led_rebound"
     if hedge == "same_or_flat" and s.get("bank_cushion") == "bank_did_not_hold":
         return "same_direction_bank_not_held"
-    if rally:
-        return "rally_without_hedge"
-    return "no_set_decision"
+    return None
 
 
 def month_stage(q: dict) -> dict:
@@ -796,7 +845,7 @@ def self_check() -> int:
         expect = {
             "nov3 bank did not hold": "same_direction_bank_not_held",
             "shanghai down bank up": "growth_down_bank_held",
-            "shanghai up": "no_set_decision",
+            "shanghai up": None,
             "bank missing": None,
         }[name]
         if decision != expect:

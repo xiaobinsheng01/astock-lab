@@ -13,6 +13,7 @@ import re
 import sys
 import urllib.request
 
+from astock.net import context as net_context
 from astock.overseas_feed import collect
 from astock.paths import LEDGER
 from astock.state import read_cursor as portable_cursor
@@ -234,7 +235,7 @@ def attach_facts(rows: list[dict]) -> None:
 
 def _fetch(url: str, timeout: int = 12) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=timeout, context=net_context()) as resp:
         return resp.read(400000).decode("utf-8", "replace")
 
 
