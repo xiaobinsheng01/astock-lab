@@ -102,6 +102,11 @@ def write_bars(root: Path, code: str, rows: list[dict]) -> dict:
     A ten-bar window cannot compute a 20-day or 250-day line, so keeping only the
     last ten made every long-window test impossible. New rows are merged by date,
     an existing date takes the newer row, and the series grows without bound.
+
+    Same-date rows merge field by field instead of replacing the row. A writer
+    that only knows the close would otherwise wipe the high and low already on
+    disk, and four-path labels need the prior day's high and low to exist at all.
+    A newer non-null value still wins; a missing key never deletes a known one.
     """
     path = root / "bars" / f"{code}.json"
     existing = _load(path, [])
@@ -109,11 +114,18 @@ def write_bars(root: Path, code: str, rows: list[dict]) -> dict:
     for item in existing:
         day = str(item.get("date") or "")
         if day:
-            by_date[day] = item
+            by_date[day] = dict(item)
     for item in rows:
         day = str(item.get("date") or "")
-        if day:
-            by_date[day] = item
+        if not day:
+            continue
+        merged = dict(by_date.get(day) or {})
+        for key, value in item.items():
+            if value is None:
+                continue
+            merged[key] = value
+        merged["date"] = day
+        by_date[day] = merged
     kept = [by_date[day] for day in sorted(by_date)]
     _dump(path, kept)
     return {"status": "已写", "kept": len(kept), "added": len(rows), "path": str(path)}
@@ -122,6 +134,54 @@ def write_bars(root: Path, code: str, rows: list[dict]) -> dict:
 def read_bars(root: Path, code: str) -> list[dict]:
     """Stored bars for one code, oldest first. A missing file is an empty list."""
     return list(_load(root / "bars" / f"{code}.json", []))
+
+
+def backfill_ohlc(root: Path, code: str, quote: dict, trade_date: str = "", *, closed: bool | None = None) -> dict:
+    """Fold one quote's high and low into that date's bar.
+
+    The index basket snapshot already carries `high` and `low`, but nothing used
+    to write them into `bars/<code>.json`, so a four-path label had no prior-day
+    band to read. This merges the two fields into the existing row instead of
+    rewriting the row, so a close-only history gains high and low without
+    losing what is already stored.
+
+    The quote's own timestamp supplies the date when one is not given: a quote
+    fetched before the open still carries the prior session's date, and folding
+    it into today would put a wrong band under today's four paths.
+
+    An intraday quote is refused unless `closed` is passed. The high and low of
+    a session that has not finished are not the session's high and low, and a
+    half-formed band silently turns every four-path label into a wrong one.
+    """
+    day = str(trade_date or "")
+    clock = ""
+    if not day:
+        ts = str(quote.get("ts") or "")
+        if len(ts) >= 8 and ts[:8].isdigit():
+            day = f"{ts[:4]}-{ts[4:6]}-{ts[6:8]}"
+        if len(ts) >= 14 and ts[8:14].isdigit():
+            clock = f"{ts[8:10]}:{ts[10:12]}:{ts[12:14]}"
+    if not day:
+        return {"status": "未写", "reason": "没有交易日：报价不带时间戳"}
+    if closed is None:
+        closed = bool(clock) and clock >= "15:00:00"
+    if not closed:
+        return {
+            "status": "未写",
+            "reason": f"盘中报价，最高最低价还没走完：{clock or '无时间戳'}，收盘后再写",
+            "date": day,
+            "clock": clock,
+        }
+    high = quote.get("high")
+    low = quote.get("low")
+    close = quote.get("px")
+    if high is None or low is None:
+        return {"status": "未写", "reason": "报价没有最高最低价"}
+    row = {"date": day, "high": high, "low": low}
+    if close is not None:
+        row["close"] = close
+    written = write_bars(root, code, [row])
+    return {**written, "date": day, "high": high, "low": low}
 
 
 def archive_snapshots(root: Path, trade_date: str) -> list[str]:
@@ -203,6 +263,12 @@ def main(argv: list[str] | None = None) -> int:
     bars.add_argument("--code", required=True)
     bars.add_argument("--rows", required=True, help="[{date, close}] JSON")
 
+    ohlc = sub.add_parser("ohlc", parents=[common], help="把一根报价的最高最低价合进日线")
+    ohlc.add_argument("--code", required=True)
+    ohlc.add_argument("--quote", required=True, help="含 high/low/px/ts 的报价 JSON")
+    ohlc.add_argument("--date", default="", help="交易日，不给就从 ts 推")
+    ohlc.add_argument("--closed", action="store_true", help="已收盘，允许写入")
+
     final = sub.add_parser("final", parents=[common])
     final.add_argument("--date", required=True)
     final.add_argument("--trading-day", action="store_true")
@@ -220,6 +286,11 @@ def main(argv: list[str] | None = None) -> int:
         result = write_news(root, args.date, json.loads(args.fact))
     elif args.cmd == "bars":
         result = write_bars(root, args.code, json.loads(args.rows))
+    elif args.cmd == "ohlc":
+        result = backfill_ohlc(
+            root, args.code, json.loads(args.quote), args.date,
+            closed=True if args.closed else None,
+        )
     elif args.cmd == "final":
         trading = args.trading_day and not args.closed
         result = finish_final(root, args.date, trading_day=trading)

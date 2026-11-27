@@ -47,6 +47,32 @@ def _day(value) -> str:
     return text
 
 
+NOT_APPLICABLE = "不适用"
+
+FINANCE_INDUSTRIES = ("银行", "保险", "券商信托", "多元金融")
+
+# 银行、保险、券商各用一张资产负债表，科目名互不相同。用错报表名拿到的是
+# 空表，看起来像「页面挂了」，其实只是问错了表。
+FINANCE_BALANCE_REPORTS = {
+    "银行": "RPT_F10_FINANCE_BBALANCE",
+    "保险": "RPT_F10_FINANCE_IBALANCE",
+    "券商信托": "RPT_F10_FINANCE_SBALANCE",
+    "多元金融": "RPT_F10_FINANCE_SBALANCE",
+}
+
+
+def _finance_report(industry: str) -> str | None:
+    text = _text(industry)
+    for word, report in FINANCE_BALANCE_REPORTS.items():
+        if word in text:
+            return report
+    return None
+
+
+def _is_finance(industry: str) -> bool:
+    return any(word in _text(industry) for word in FINANCE_INDUSTRIES)
+
+
 def _gap(value, digits: int | None = None):
     if value is None or value == "":
         return GAP
@@ -216,10 +242,203 @@ def _org_total(rows: list | None) -> dict:
     }
 
 
+def _restricted(capital: dict) -> tuple:
+    """Restricted A-shares, or a gap when the page does not let us tell.
+
+    Some H-share issuers leave LIMITED_SHARES empty even though the same page
+    carries total, listed-A and H-share counts. When total minus listed-A minus
+    H shares is exactly zero, restricted A is zero by arithmetic on that page.
+    Anything else stays 未核 rather than being inferred.
+    """
+    limited = _num(capital.get("LIMITED_SHARES"))
+    if limited is not None:
+        return limited, _num(capital.get("LIMITED_SHARES_RATIO"))
+    total = _num(capital.get("TOTAL_SHARES"))
+    listed_a = _num(capital.get("LISTED_A_SHARES"))
+    h_free = _num(capital.get("H_FREE_SHARE")) or 0.0
+    b_free = _num(capital.get("B_FREE_SHARE")) or 0.0
+    if total is None or listed_a is None:
+        return None, None
+    remainder = total - listed_a - h_free - b_free
+    if abs(remainder) < 1:
+        return 0.0, 0.0 if total else None
+    return None, None
+
+
 def _finance_row(rows: list | None, index: int) -> dict:
     if not rows or len(rows) <= index or not isinstance(rows[index], dict):
         return {}
     return rows[index]
+
+
+def _report_series(rows: list | None, *, limit: int = 5, industry: str = "") -> list[dict]:
+    """Recent report periods, newest first. Only periods that carry a revenue.
+
+    The indicator page already returns nine periods and only two were read. The
+    rules ask for a three-year plus latest-quarter series, so this keeps what
+    the page gives instead of reporting a fetched series as 待收集.
+    """
+    out = []
+    for row in (rows or [])[:limit]:
+        if not isinstance(row, dict):
+            continue
+        revenue = _num(row.get("TOTALOPERATEREVE"))
+        if revenue is None:
+            continue
+        out.append(
+            {
+                "报告期": _text(row.get("REPORT_DATE_NAME")) or _day(row.get("REPORT_DATE")),
+                "营业总收入亿元": round(revenue / 100000000.0, 2),
+                "营收同比": _gap(row.get("TOTALOPERATEREVETZ"), 2),
+                "归母净利润亿元": _yi(row.get("PARENTNETPROFIT")),
+                "归母同比": _gap(row.get("PARENTNETPROFITTZ"), 2),
+                "扣非净利润亿元": _yi(row.get("KCFJCXSYJLR")),
+                "毛利率": NOT_APPLICABLE
+                if _gap(row.get("XSMLL"), 2) == GAP and _is_finance(industry)
+                else _gap(row.get("XSMLL"), 2),
+                "净利率": _gap(row.get("XSJLL"), 2),
+                "加权ROE": _gap(row.get("ROEJQ"), 2),
+            }
+        )
+    return out
+
+
+def _quote_view(quote: dict | None) -> dict:
+    """The price cells. A failed quote keeps every cell 未核."""
+    quote = quote or {}
+    if not quote:
+        return {"状态": GAP}
+    return {
+        "状态": "已核",
+        "行情日期": quote.get("行情日期") or GAP,
+        "行情时刻": quote.get("行情时刻") or GAP,
+        "是否收盘": quote.get("是否收盘") or GAP,
+        "现价": quote.get("收盘", GAP),
+        # 行情接口给的是流通市值，不是自由流通市值。自由流通要剔除大股东和
+        # 一致行动人锁定部分，公开页没有这个数，所以这一格不拿流通市值顶替。
+        "流通市值亿": quote.get("流通市值亿", GAP),
+        "总市值亿": quote.get("总市值亿", GAP),
+        "换手率": quote.get("换手率", GAP),
+        "量比": quote.get("量比", GAP),
+    }
+
+
+def _balance_view(rows: list | None, *, industry: str = "") -> dict:
+    """Latest balance-sheet items plus the interest-bearing debt total.
+
+    The rules name money in the bank, receivables, inventory and goodwill, and
+    an interest-bearing debt figure. All of them are separate balance-sheet
+    rows; none of them needed a new source, only a fetch that was never wired.
+
+    A null row on a balance sheet means the statement has no such line, which is
+    a zero balance — Moutai carries no goodwill and no borrowings. That is not
+    the same as a page that failed to load, so the two are reported apart.
+    """
+    if rows is None:
+        return {"状态": GAP}
+    if not rows:
+        return {"状态": "无"}
+    row = rows[0] if isinstance(rows[0], dict) else {}
+    report = _finance_report(industry)
+    if report == "RPT_F10_FINANCE_BBALANCE":
+        # 银行报表没有应收和存货。CURRENCY 是记账币种（值就是 CNY），不是
+        # 货币资金；银行对得上的现金科目是存放央行款项 CASH_DEPOSIT_PBC。
+        return {
+            "状态": "已核",
+            "报告期": _day(row.get("REPORT_DATE")) or GAP,
+            "货币资金亿元": _yi(row.get("CASH_DEPOSIT_PBC")),
+            "货币资金口径": "存放中央银行款项",
+            "应收账款亿元": NOT_APPLICABLE,
+            "存货亿元": NOT_APPLICABLE,
+            "商誉亿元": _yi(row.get("GOODWILL")),
+            "有息负债亿元": NOT_APPLICABLE,
+            "有息负债未列示": True,
+            "短期借款亿": NOT_APPLICABLE,
+            "长期借款亿": NOT_APPLICABLE,
+            "应付债券亿": NOT_APPLICABLE,
+            "一年内到期亿": NOT_APPLICABLE,
+            "金融科目": {
+                "贷款及垫款亿元": _yi(row.get("LOAN_ADVANCE")),
+                "吸收存款亿元": _yi(row.get("ACCEPT_DEPOSIT")),
+                "应付债券亿元": _yi(row.get("BOND_PAYABLE")),
+            },
+        }
+    if report in ("RPT_F10_FINANCE_IBALANCE", "RPT_F10_FINANCE_SBALANCE"):
+        # 保险和券商的报表有货币资金和应收，但资产负债表里没有存货科目，
+        # 借款也不按「短期/长期借款」拆分，只有长期借款一行。券商把应收
+        # 存在 RECEIVABLES，保险存在 ACCOUNTS_RECE，两个名字都要认。
+        receivable = row.get("RECEIVABLES")
+        if receivable is None:
+            receivable = row.get("ACCOUNTS_RECE")
+        # 金融股的有息负债不能只取长期借款：券商和保险的大头在应付债券，
+        # 只算长借款会把中信证券 2114 亿债券漏掉，印出 0.07 亿这种数。
+        loan = _num(row.get("LONG_LOAN"))
+        bond = _num(row.get("BOND_PAYABLE"))
+        given = [v for v in (loan, bond) if v is not None]
+        return {
+            "状态": "已核",
+            "报告期": _day(row.get("REPORT_DATE")) or GAP,
+            "货币资金亿元": _yi(row.get("MONETARYFUNDS")),
+            "应收账款亿元": _yi(receivable),
+            "存货亿元": NOT_APPLICABLE,
+            "商誉亿元": _yi(row.get("GOODWILL")),
+            "有息负债亿元": round(sum(given) / 100000000.0, 2),
+            "有息负债未列示": not given,
+            "长期借款亿": _yi(row.get("LONG_LOAN")),
+            "应付债券亿": _yi(row.get("BOND_PAYABLE")),
+            "金融股本报表": True,
+        }
+    parts = {
+        "短期借款亿": row.get("SHORT_LOAN"),
+        "长期借款亿": row.get("LONG_LOAN"),
+        "应付债券亿": row.get("BOND_PAYABLE"),
+        "一年内到期亿": row.get("NONCURRENT_LIAB_1YEAR"),
+    }
+    given = {k: _num(v) for k, v in parts.items() if _num(v) is not None}
+    return {
+        "状态": "已核",
+        "报告期": _day(row.get("REPORT_DATE")) or GAP,
+        "货币资金亿元": _yi(row.get("MONETARYFUNDS")),
+        "应收账款亿元": _yi(row.get("ACCOUNTS_RECE")),
+        "存货亿元": _yi(row.get("INVENTORY")),
+        "商誉亿元": _yi(row.get("GOODWILL")),
+        # 报表没有有息负债行就是零余额；写未核会让人反复重试一个不存在的行。
+        "有息负债亿元": round(sum(given.values()) / 100000000.0, 2),
+        "有息负债未列示": not given,
+        **{k: _yi(v) for k, v in parts.items()},
+    }
+
+
+def _dividend_view(rows: list | None) -> dict:
+    """Dividend plans, newest first. A plan with no per-share figure keeps its text.
+
+    A pre-disclosed plan says "每10股派发现金红利应不少于3.8元" and carries no
+    per-share number yet. Writing 0 there would read as "pays nothing", which is
+    the opposite of what the plan says, so the raw plan text is kept instead.
+    """
+    if rows is None:
+        return {"状态": GAP}
+    plans = []
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        # PRETAX_BONUS_RMB 是「每 10 股派息（元）」，不是每股。曾经按每股再乘
+        # 10，把茅台 10 派 280.24 印成 10 派 2802.42，整整放大十倍。方案原文
+        # 同时留下，两者对不上时以原文为准。
+        per_ten = _num(row.get("PRETAX_BONUS_RMB"))
+        if per_ten is None:
+            per_ten = _num(row.get("BONUS_IT_RATIO"))
+        profile = _text(row.get("IMPL_PLAN_PROFILE"))
+        plans.append(
+            {
+                "报告期": _day(row.get("REPORT_DATE")) or GAP,
+                "除权除息日": _day(row.get("EX_DIVIDEND_DATE")) or GAP,
+                "进度": _text(row.get("ASSIGN_PROGRESS")) or GAP,
+                "每10股派元": round(per_ten, 4) if per_ten is not None else GAP,
+                "方案原文": profile or "",
+            }
+        )
+    return {"状态": "已核", "期数": len(plans), "明细": plans[:5]}
 
 
 def portrait(bundle: dict, as_of: str) -> dict:
@@ -248,8 +467,27 @@ def portrait(bundle: dict, as_of: str) -> dict:
         finance.get("TOTALOPERATEREVETZ"),
     )]
     listed_a = capital.get("LISTED_A_SHARES")
+    restricted, restricted_ratio = _restricted(capital)
     regime = board_limit(code, "" if name == GAP else name)
     former = _text(basics.get("cym"))
+    industry = _text(basics.get("sshy"))
+    balance = _balance_view(bundle.get("balance"), industry=industry)
+    dividends = _dividend_view(bundle.get("dividends"))
+    # 扣非加权ROE 只在半年报和年报披露，季报页面给空值是「本期不披露」，
+    # 不是「取数失败」。两者都写未核会把一个正常的披露节奏报成故障。
+    deduct_roe = finance.get("ROEKCJQ")
+    if deduct_roe is None:
+        report_name = _text(finance.get("REPORT_DATE_NAME"))
+        deduct_roe = "本期不披露" if "季报" in report_name else GAP
+    else:
+        deduct_roe = _gap(deduct_roe, 2)
+    # 金融报表没有毛利润和流动资产/流动负债，毛利率与流动比率这两格在
+    # 银行、保险、券商身上是不适用，不是缺数。写未核会让人一直重试。
+    gross_margin = _gap(finance.get("XSMLL"), 2)
+    current_ratio = _gap(finance.get("LD"), 2)
+    if _is_finance(industry):
+        gross_margin = NOT_APPLICABLE if gross_margin == GAP else gross_margin
+        current_ratio = NOT_APPLICABLE if current_ratio == GAP else current_ratio
     return {
         "代码": code,
         "名称": name,
@@ -274,25 +512,36 @@ def portrait(bundle: dict, as_of: str) -> dict:
             "归母同比": _gap(finance.get("PARENTNETPROFITTZ"), 2),
             "扣非净利润亿元": _yi(finance.get("KCFJCXSYJLR")),
             "扣非同比": _gap(finance.get("KCFJCXSYJLRTZ"), 2),
-            "毛利率": _gap(finance.get("XSMLL"), 2),
+            "毛利率": gross_margin,
             "净利率": _gap(finance.get("XSJLL"), 2),
             "加权ROE": _gap(finance.get("ROEJQ"), 2),
-            "扣非加权ROE": _gap(finance.get("ROEKCJQ"), 2),
+            "扣非加权ROE": deduct_roe,
             "基本每股收益": _gap(finance.get("EPSJB"), 4),
             "每股净资产": _gap(finance.get("BPS"), 2),
             "每股经营现金流": _gap(finance.get("MGJYXJJE"), 4),
             "经营现金流占营收": _gap(finance.get("JYXJLYYSR"), 4),
             "资产负债率": _gap(finance.get("ZCFZL"), 2),
-            "流动比率": _gap(finance.get("LD"), 2),
+            "流动比率": current_ratio,
             "业绩": earnings,
             "扣非拐点": deducted_turn(
                 finance.get("KCFJCXSYJLR"),
                 prior_finance.get("KCFJCXSYJLR"),
             ),
+            "报表序列": _report_series(bundle.get("indicators"), industry=industry),
+            "资产负债分项": balance,
+            "分红": dividends,
         },
         "主力": {
-            "实际控制人": _text(controller.get("HOLDER_NAME")) or GAP,
-            "实控人披露持股比例": _gap(controller.get("HOLD_RATIO"), 2),
+            # 接口给了行但名称为空，是「无实际控制人」（股权分散的银行、保险
+            # 常见），不是取数失败。写未核会让人反复去抓一个本来就不存在的名字。
+            "实际控制人": _text(controller.get("HOLDER_NAME")) or (
+                "无实际控制人" if controllers else GAP
+            ),
+            # sjkzr 这一页的 HOLD_RATIO 长期为 null，是接口没给，不是取数失败。
+            # 写未核会让人一遍遍重试一个永远不来的字段。
+            "实控人披露持股比例": _gap(controller.get("HOLD_RATIO"), 2)
+            if _num(controller.get("HOLD_RATIO")) is not None
+            else "接口未披露",
             "前十大": _holders_view(bundle.get("holders")),
             "股东户数": {
                 "本期": _day(latest_count.get("END_DATE")) or GAP,
@@ -310,8 +559,9 @@ def portrait(bundle: dict, as_of: str) -> dict:
             **regime,
             "总股本": _gap(capital.get("TOTAL_SHARES")),
             "流通A股": _gap(listed_a),
-            "限售股": _gap(capital.get("LIMITED_SHARES")),
-            "限售占总股本": _gap(capital.get("LIMITED_SHARES_RATIO"), 2),
+            "限售股": _gap(restricted),
+            "限售占总股本": _gap(restricted_ratio, 2),
+            "行情": _quote_view(bundle.get("quote")),
             "解禁": next_unlock(bundle.get("unlocks"), as_of, listed_a),
             "股东户数环比": _gap(latest_count.get("TOTAL_NUM_RATIO"), 2),
             "户数方向": holder_count_direction(latest_count.get("TOTAL_NUM_RATIO")),
@@ -324,18 +574,50 @@ def portrait(bundle: dict, as_of: str) -> dict:
 
 
 def _get_json(url: str):
-    with open_url(
-        url,
-        headers={
-            "User-Agent": "Mozilla/5.0",
-            "Referer": "https://emweb.securities.eastmoney.com/",
-        },
-        timeout=20,
-    ) as resp:
-        raw = resp.read().decode("utf-8", "replace").lstrip("\ufeff")
+    raw = _get_bytes(url).decode("utf-8", "replace").lstrip("\ufeff")
     if raw.lstrip().startswith("<"):
         return None
     return json.loads(raw)
+
+
+def _get_bytes(url: str) -> bytes:
+    """One public page, decompressed if the host sent it packed.
+
+    Eastmoney sometimes answers a gzip body without honouring our headers. The
+    old code decoded those bytes straight as text, got mojibake, and the whole
+    identity block became 未核 from one packed response — no exception, no
+    retry, silently blank. Detect the magic bytes instead of trusting the
+    header, and retry once: a single flaky page should not erase a block.
+    """
+    import gzip
+    import zlib
+
+    def once() -> bytes:
+        with open_url(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Referer": "https://emweb.securities.eastmoney.com/",
+                "Accept-Encoding": "gzip, deflate",
+            },
+            timeout=20,
+        ) as resp:
+            return resp.read()
+
+    last: Exception | None = None
+    for _ in range(2):
+        try:
+            body = once()
+            break
+        except Exception as exc:  # noqa: BLE001 — 一次抖动不该让整块变未核
+            last = exc
+    else:
+        raise last if last else RuntimeError("fetch failed")
+    if body[:2] == b"\x1f\x8b":
+        body = gzip.decompress(body)
+    elif body[:2] == b"\x78\x9c" or body[:2] == b"\x78\xda":
+        body = zlib.decompress(body)
+    return body
 
 
 def _fetch_page(url: str):
@@ -343,7 +625,6 @@ def _fetch_page(url: str):
         return _get_json(url)
     except Exception:
         return None
-
 
 def fetch_bundle(code: str) -> dict:
     """Public Eastmoney pages. A failed page is None and becomes 未核."""
@@ -382,6 +663,128 @@ def fetch_bundle(code: str) -> dict:
         "controller": (research or {}).get("sjkzr") if isinstance(research, dict) else None,
         "institutions": (research or {}).get("jgcc") if isinstance(research, dict) else None,
         "holders": _periods(holders_payload),
+        "balance": _balance(code, suffix, industry=_text(
+            ((survey or {}).get("jbzl") or {}).get("sshy")
+            if isinstance(survey, dict) else ""
+        )),
+        "dividends": _dividends(code, suffix),
+        "quote": _quote(code),
+    }
+
+
+def _datacenter(report: str, code: str, suffix: str, columns: str, *, size: int = 12):
+    """One datacenter report, newest first. A dead page is None, not an empty list."""
+    url = (
+        "https://datacenter.eastmoney.com/securities/api/data/v1/get"
+        f"?reportName={report}&columns={columns}"
+        f"&filter=(SECUCODE%3D%22{code}.{suffix}%22)"
+        f"&pageNumber=1&pageSize={size}&sortColumns=REPORT_DATE&sortTypes=-1"
+    )
+    payload = _fetch_page(url)
+    if not isinstance(payload, dict):
+        return None
+    return ((payload.get("result") or {}).get("data")) or []
+
+
+def _balance(code: str, suffix: str, *, industry: str = ""):
+    """Balance-sheet items the rules name but the indicator page does not carry.
+
+    Money in the bank, receivables, inventory and goodwill are separate rows on
+    the balance sheet. They were 待收集 only because nothing fetched them, not
+    because they were unavailable.
+
+    Banks, insurers and brokers each file their own statement shape. Reading a
+    bank with the industrial column names returns an empty table, which used to
+    look like a dead page rather than a wrong question.
+    """
+    report = _finance_report(industry)
+    if report == "RPT_F10_FINANCE_BBALANCE":
+        return _datacenter(
+            report,
+            code,
+            suffix,
+            "SECUCODE,REPORT_DATE,CASH_DEPOSIT_PBC,GOODWILL,TOTAL_ASSETS,"
+            "TOTAL_LIABILITIES,LOAN_ADVANCE,ACCEPT_DEPOSIT,BOND_PAYABLE",
+            size=8,
+        )
+    if report == "RPT_F10_FINANCE_IBALANCE":
+        return _datacenter(
+            report,
+            code,
+            suffix,
+            "SECUCODE,REPORT_DATE,MONETARYFUNDS,ACCOUNTS_RECE,GOODWILL,"
+            "TOTAL_ASSETS,TOTAL_LIABILITIES,LONG_LOAN,BOND_PAYABLE",
+            size=8,
+        )
+    if report == "RPT_F10_FINANCE_SBALANCE":
+        # 券商报表的应收叫 RECEIVABLES，不是 ACCOUNTS_RECE。列名写错时整张表
+        # 返回空，和「页面挂了」长得一模一样，所以这一列要单列。
+        return _datacenter(
+            report,
+            code,
+            suffix,
+            "SECUCODE,REPORT_DATE,MONETARYFUNDS,RECEIVABLES,GOODWILL,"
+            "TOTAL_ASSETS,TOTAL_LIABILITIES,LONG_LOAN,BOND_PAYABLE",
+            size=8,
+        )
+    return _datacenter(
+        "RPT_F10_FINANCE_GBALANCE",
+        code,
+        suffix,
+        "SECUCODE,REPORT_DATE,MONETARYFUNDS,ACCOUNTS_RECE,INVENTORY,GOODWILL,"
+        "TOTAL_ASSETS,TOTAL_LIABILITIES,SHORT_LOAN,LONG_LOAN,BOND_PAYABLE,"
+        "NONCURRENT_LIAB_1YEAR",
+        size=8,
+    )
+
+
+def _dividends(code: str, suffix: str):
+    return _datacenter(
+        "RPT_SHAREBONUS_DET",
+        code,
+        suffix,
+        "SECUCODE,REPORT_DATE,EX_DIVIDEND_DATE,PRETAX_BONUS_RMB,"
+        "BONUS_IT_RATIO,ASSIGN_PROGRESS,IMPL_PLAN_PROFILE,NOTICE_DATE",
+        size=8,
+    )
+
+
+def _quote(code: str) -> dict:
+    """One live quote, only for the two cells that need a price.
+
+    Free float market cap cannot be a report-period figure: it moves with the
+    close. The rules require it to carry its quote date, and the Tencent payload
+    already prints float cap in 亿 and the timestamp, so this reads those two
+    fields and nothing else. A failed fetch stays 未核 rather than guessing.
+    """
+    symbol = f"{market_suffix(code).lower()}{code}"
+    try:
+        raw = _get_bytes(f"https://qt.gtimg.cn/q={symbol}").decode("gbk", "replace")
+    except Exception:  # noqa: BLE001 — 一行行情取不到不该拖垮整张画像
+        return {}
+    parts = raw.split('"', 1)[-1].split("~")
+    if len(parts) < 50:
+        return {}
+
+    def positive(index: int):
+        value = _num(parts[index]) if len(parts) > index else None
+        return value if value is not None and value > 0 else None
+
+    stamp = _text(parts[30]) if len(parts) > 30 else ""
+    # 腾讯的时间戳是 yyyyMMddHH，没有分隔符。旧写法按 yyyy-MM-dd 切，得到的
+    # 是一串不像日期的数字；盘中的小时也要留下，否则 11 点的价会被当成收盘价。
+    day = f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:8]}" if len(stamp) >= 8 else GAP
+    hour = stamp[8:10] if len(stamp) >= 10 else ""
+    return {
+        "收盘": positive(3),
+        "行情日期": day,
+        "行情时刻": f"{day} {hour}:00" if hour else day,
+        # 15 点前是盘中读数，不是收盘价：自由流通市值能算，但不能当收盘定格。
+        "是否收盘": "是" if hour and hour >= "15" else "否（盘中）",
+        "流通市值亿": positive(44),
+        "总市值亿": positive(45),
+        "换手率": positive(38),
+        "量比": positive(49),
     }
 
 
@@ -447,7 +850,7 @@ def format_portrait(sheet: dict) -> str:
         "可比公司: 待收集",
         "二、生意与报表",
         _line("最新报告期", f"{inst['报告期']} {inst['报告名称']}".strip()),
-        "近3年及最新单季序列: 待收集",
+        *_format_series(inst["报表序列"]),
         _line("最新营业总收入亿元", inst["营业总收入亿元"]),
         _line("最新营收同比", inst["营收同比"]),
         _line("最新归母净利润亿元", inst["归母净利润亿元"]),
@@ -466,13 +869,9 @@ def format_portrait(sheet: dict) -> str:
         "利润与现金流是否匹配: 未填",
         _line("资产负债率", inst["资产负债率"]),
         _line("流动比率", inst["流动比率"]),
-        "有息负债: 待收集",
-        "货币资金: 待收集",
-        "商誉: 待收集",
-        "应收账款: 待收集",
-        "存货: 待收集",
+        *_format_balance(inst["资产负债分项"]),
         "业绩预告与说明会: 待收集",
-        "分红历史: 待收集",
+        *_format_dividends(inst["分红"]),
         "产品产能产量销量与定价模式: 待收集",
         "上下游: 待收集",
         "核心壁垒: 待收集",
@@ -494,8 +893,8 @@ def format_portrait(sheet: dict) -> str:
         _line("流通A股", hot["流通A股"]),
         _line("限售股", hot["限售股"]),
         _line("限售占总股本", hot["限售占总股本"]),
-        "自由流通市值: 待收集",
         _format_unlock("下一笔解禁", force["解禁"]),
+        *_format_quote(hot["行情"]),
         _line("股东户数本期", count["本期"]),
         _line("股东户数", count["户数"]),
         _line("股东户数环比", count["环比"]),
@@ -549,7 +948,7 @@ def fetch_queries(sheet: dict) -> list[dict]:
         {"来源": "前十大", "查询": code, "资料": "前十大与股东户数", "刷新": "按期"},
     ]
     controller = sheet["主力"]["实际控制人"]
-    if controller not in (GAP, "", None):
+    if controller not in (GAP, "", None, "无实际控制人"):
         rows.append({"来源": "实控人", "查询": controller, "资料": "控制权与股东公告", "刷新": "按消息"})
     seen_connect = False
     for holder in sheet["主力"]["前十大"].get("名单") or []:
@@ -561,6 +960,114 @@ def fetch_queries(sheet: dict) -> list[dict]:
     if unlock.get("状态") == "有" and unlock.get("日期") not in (GAP, "", None):
         rows.append({"来源": "解禁", "查询": unlock["日期"], "资料": "解禁规模", "刷新": "按期"})
     return rows
+
+
+def _format_quote(block: dict) -> list[str]:
+    """Float cap, and only the float cap we can actually name.
+
+    The cell is 自由流通市值. The quote gives 流通市值. Writing one under the
+    other's label is how a reader ends up sizing a position against a number
+    that excludes nothing. 自由流通 stays 待收集 until a source for the
+    deducted base is wired; 流通市值 is printed separately so the gap is visible
+    rather than papered over.
+    """
+    if block.get("状态") != "已核":
+        return [
+            "自由流通市值: 未核",
+            "流通市值: 未核",
+        ]
+
+    def gap(value, unit: str) -> str:
+        return "未核" if value == GAP else f"{value}{unit}"
+
+    return [
+        "自由流通市值: 待收集(公开页只给流通市值，不含大股东锁定剔除)",
+        f"流通市值: {gap(block['流通市值亿'], '亿')}"
+        f" (行情 {block['行情时刻']}，收盘价{block['是否收盘']})",
+        f"总市值: {gap(block['总市值亿'], '亿')}"
+        f" 现价 {gap(block['现价'], '')}"
+        f" 换手率 {gap(block['换手率'], '%')}"
+        f" 量比 {gap(block['量比'], '')}",
+    ]
+
+
+def _format_series(rows: list) -> list[str]:
+    """One line per report period. Nothing to show stays 未核, not an empty list."""
+    if not rows:
+        return ["近3年及最新单季序列: 未核"]
+
+    def pct(value) -> str:
+        # 缺数就写未核，不拼出「同比未核%」这种账面残缺的句子。
+        return "未核" if value == GAP else f"{value}%"
+
+    def yi(value) -> str:
+        return "未核" if value == GAP else f"{value}亿"
+
+    lines = []
+    for row in rows:
+        lines.append(
+            f"报告期 {row['报告期']}: 营收{yi(row['营业总收入亿元'])}"
+            f" 同比{pct(row['营收同比'])} 归母{yi(row['归母净利润亿元'])}"
+            f" 同比{pct(row['归母同比'])} 扣非{yi(row['扣非净利润亿元'])}"
+            f" 毛利率{pct(row['毛利率'])} 净利率{pct(row['净利率'])}"
+            f" ROE{pct(row['加权ROE'])}"
+        )
+    return lines
+
+
+def _format_balance(block: dict) -> list[str]:
+    if block.get("状态") != "已核":
+        if block.get("状态") == "无":
+            return ["资产负债分项: 无"]
+        return ["资产负债分项: 未核"]
+
+    def yi(value) -> str:
+        # 报表没有这一行就是零余额，不拼成「商誉未核」这种半截结论。
+        if value == NOT_APPLICABLE:
+            return NOT_APPLICABLE
+        return "0亿" if value == GAP else f"{value}亿"
+
+    debt_detail = " ".join(
+        f"{label}{yi(block[key])}"
+        for label, key in (
+            ("短借", "短期借款亿"),
+            ("长借", "长期借款亿"),
+            ("债券", "应付债券亿"),
+            ("一年内到期", "一年内到期亿"),
+        )
+        if key in block
+    )
+    lines = [
+        f"资产负债分项({block['报告期']}) 货币资金{yi(block['货币资金亿元'])}"
+        f" 应收账款{yi(block['应收账款亿元'])} 存货{yi(block['存货亿元'])}"
+        f" 商誉{yi(block['商誉亿元'])} 有息负债{yi(block['有息负债亿元'])}"
+        f" ({debt_detail})"
+    ]
+    if block.get("货币资金口径"):
+        # 银行的现金不是「货币资金」，标出口径，避免跟工商企业的现金混读。
+        lines.append(f"货币资金口径: {block['货币资金口径']}")
+    finance_items = block.get("金融科目") or {}
+    if finance_items:
+        shown = " ".join(f"{name}{yi(value)}" for name, value in finance_items.items())
+        lines.append(f"金融科目: {shown}")
+    return lines
+
+
+def _format_dividends(block: dict) -> list[str]:
+    if block.get("状态") != "已核":
+        if block.get("状态") == "无":
+            return ["分红历史: 无"]
+        return ["分红历史: 未核"]
+    lines = [f"分红历史: {block['期数']}期在案"]
+    for plan in block["明细"]:
+        paid = plan["每10股派元"]
+        tail = f" 每10股派{paid}元" if paid != GAP else ""
+        text = f" 方案原文「{plan['方案原文']}」" if plan["方案原文"] else ""
+        lines.append(
+            f"分红 {plan['报告期']} {plan['进度']}{tail}"
+            f" 除权除息{plan['除权除息日']}{text}"
+        )
+    return lines
 
 
 def _format_query(row: dict) -> str:
@@ -697,6 +1204,37 @@ def _sample_bundle() -> dict:
             "TOTAL_ORG_NUM": 236,
             "TOTAL_SHARES_RATIO": 27.45,
         }],
+        "balance": [{
+            "REPORT_DATE": "2026-09-30 00:00:00",
+            "MONETARYFUNDS": 10000000000,
+            "ACCOUNTS_RECE": 2000000000,
+            "INVENTORY": 3000000000,
+            "GOODWILL": 500000000,
+            "SHORT_LOAN": 1000000000,
+            "LONG_LOAN": 2000000000,
+            "BOND_PAYABLE": None,
+            "NONCURRENT_LIAB_1YEAR": None,
+        }],
+        "dividends": [
+            {
+                "REPORT_DATE": "2026-06-30 00:00:00",
+                "EX_DIVIDEND_DATE": None,
+                "ASSIGN_PROGRESS": "预披露",
+                "PRETAX_BONUS_RMB": None,
+                "BONUS_IT_RATIO": None,
+                "IMPL_PLAN_PROFILE": "每10股派发现金红利应不少于3.8元(含税)",
+            },
+            {
+                "REPORT_DATE": "2026-03-31 00:00:00",
+                "EX_DIVIDEND_DATE": "2026-08-21 00:00:00",
+                "ASSIGN_PROGRESS": "实施分配",
+                # 真实接口把「每 10 股派息」放在 PRETAX_BONUS_RMB。样例也照这个放，
+                # 否则错误单位永远测不出来。
+                "PRETAX_BONUS_RMB": 4.2,
+                "BONUS_IT_RATIO": None,
+                "IMPL_PLAN_PROFILE": "10派4.20元(含税)",
+            },
+        ],
         "holders": [
             {"day": "2026-09-30", "holders": holders},
             {"day": "2026-06-30", "holders": prior},
@@ -734,6 +1272,106 @@ def self_check() -> int:
     check("empty finance stays unchecked", empty["机构"]["业绩"] == "未核")
     check("empty holders stay unchecked", empty["主力"]["前十大"]["结构"] == "未核")
     check("missing unlock page stays unchecked", empty["游资"]["解禁"]["状态"] == "未核")
+
+    # 报表序列：指标页本来就给了多期，不能标成待收集。
+    series = sheet["机构"]["报表序列"]
+    check("series keeps the period that carries revenue", len(series) == 1)
+    check("series keeps the newest period first", series[0]["报告期"] == "2026三季报")
+    check("a period without revenue is not a series row",
+          all(row["报告期"] != "" for row in series))
+    check("series says 未核 when the page is empty", portrait({"code": "600000"}, "2026-11-25")["机构"]["报表序列"] == [])
+
+    # 扣非ROE 季报不披露，是披露节奏，不是取数失败。
+    quarterly = portrait(
+        {"code": "600000", "indicators": [{"REPORT_DATE_NAME": "2026三季报"}]},
+        "2026-11-25",
+    )["机构"]["扣非加权ROE"]
+    check("quarterly deducted roe says not disclosed", quarterly == "本期不披露")
+    annual = portrait(
+        {"code": "600000", "indicators": [{"REPORT_DATE_NAME": "2025年报", "ROEKCJQ": 12.5}]},
+        "2026-11-25",
+    )
+    check("annual deducted roe is read", annual["机构"]["扣非加权ROE"] == 12.5)
+
+    # 资产负债分项：接口没接之前是待收集，现在必须真取到。
+    bal = sheet["机构"]["资产负债分项"]
+    check("balance block is wired", bal["状态"] == "已核")
+    check("money in bank in yi", bal["货币资金亿元"] == 100.0)
+    check("goodwill in yi", bal["商誉亿元"] == 5.0)
+    empty_bal = portrait({"code": "600000"}, "2026-11-25")["机构"]["资产负债分项"]
+    check("missing balance page stays unchecked", empty_bal["状态"] == "未核")
+    no_debt = portrait(
+        {"code": "600000", "balance": [{"REPORT_DATE": "2026-09-30 00:00:00", "GOODWILL": None,
+                                        "SHORT_LOAN": None, "LONG_LOAN": None,
+                                        "BOND_PAYABLE": None, "NONCURRENT_LIAB_1YEAR": None}]},
+        "2026-11-25",
+    )["机构"]["资产负债分项"]
+    check("a missing balance row is a zero balance", no_debt["有息负债亿元"] == 0)
+    check("zero balance is flagged as unlisted", no_debt["有息负债未列示"] is True)
+
+    # 分红：方案原文要留，预披露没有每股数字不能写成 0。
+    divs = sheet["机构"]["分红"]
+    check("dividends wired", divs["状态"] == "已核")
+    check("pre-disclosed plan keeps its text", "不少于3.8元" in divs["明细"][0]["方案原文"])
+    check("pre-disclosed plan has no per-share figure", divs["明细"][0]["每10股派元"] == GAP)
+    check("implemented plan reads per ten shares", divs["明细"][1]["每10股派元"] == 4.2)
+    check("missing dividend page stays unchecked",
+          portrait({"code": "600000"}, "2026-11-25")["机构"]["分红"]["状态"] == "未核")
+
+    # 限售股：H 股公司留空时，用同一页的数字算出来，不猜。
+    h_share = portrait(
+        {"code": "601899", "capital": [{"TOTAL_SHARES": 1000, "LISTED_A_SHARES": 700,
+                                        "H_FREE_SHARE": 300, "LIMITED_SHARES": None}]},
+        "2026-11-25",
+    )
+    check("restricted shares resolve to zero on an H-share count", h_share["游资"]["限售股"] == 0)
+    unclear = portrait(
+        {"code": "601899", "capital": [{"TOTAL_SHARES": 1000, "LISTED_A_SHARES": 700,
+                                        "LIMITED_SHARES": None}]},
+        "2026-11-25",
+    )
+    check("an unresolved remainder stays unchecked", unclear["游资"]["限售股"] == GAP)
+
+    # 实控人比例这一页长期为 null，要写「接口未披露」而不是无限重试。
+    check("controller ratio is read when the page gives it",
+          sheet["主力"]["实控人披露持股比例"] == 3.46)
+    null_ratio = portrait(
+        {"code": "600000", "controller": [{"HOLDER_NAME": "示例", "HOLD_RATIO": None}]},
+        "2026-11-25",
+    )
+    check("controller ratio says the interface omits it",
+          null_ratio["主力"]["实控人披露持股比例"] == "接口未披露")
+
+    # 金融股：报表没有毛利率和流动比率，现金口径不同，常常没有实控人。
+    bank = portrait(
+        {"code": "600036", "survey": {"jbzl": {"sshy": "银行"}},
+         "indicators": [{"REPORT_DATE_NAME": "2026三季报", "TOTALOPERATEREVE": 1e10}],
+         "controller": [{"HOLDER_NAME": None, "HOLD_RATIO": None}],
+         "balance": [{"REPORT_DATE": "2026-09-30 00:00:00", "CASH_DEPOSIT_PBC": 5e11,
+                      "GOODWILL": 1e10, "LOAN_ADVANCE": 7e12, "ACCEPT_DEPOSIT": 1e13,
+                      "BOND_PAYABLE": 1e11}]},
+        "2026-11-25",
+    )
+    check("a bank has no gross margin", bank["机构"]["毛利率"] == NOT_APPLICABLE)
+    check("a bank has no current ratio", bank["机构"]["流动比率"] == NOT_APPLICABLE)
+    check("a bank has no controller", bank["主力"]["实际控制人"] == "无实际控制人")
+    check("bank cash is the central bank deposit", bank["机构"]["资产负债分项"]["货币资金亿元"] == 5000.0)
+    check("bank cash is labelled", bank["机构"]["资产负债分项"]["货币资金口径"] == "存放中央银行款项")
+    check("a bank has no receivables", bank["机构"]["资产负债分项"]["应收账款亿元"] == NOT_APPLICABLE)
+
+    broker = portrait(
+        {"code": "600030", "survey": {"jbzl": {"sshy": "券商信托"}},
+         "balance": [{"REPORT_DATE": "2026-09-30 00:00:00", "MONETARYFUNDS": 1e11,
+                      "RECEIVABLES": 2e10, "GOODWILL": 1e9, "LONG_LOAN": 7e6,
+                      "BOND_PAYABLE": 2.114e11}]},
+        "2026-11-25",
+    )
+    check("broker receivables are read", broker["机构"]["资产负债分项"]["应收账款亿元"] == 200.0)
+    check("broker debt includes bonds", broker["机构"]["资产负债分项"]["有息负债亿元"] == 2114.07)
+
+    check("no controller is not a query word",
+          all("无实际控制人" not in str(row["查询"]) for row in fetch_queries(bank)))
+
     none_left = portrait({"code": "600000", "unlocks": []}, "2026-11-25")
     check("opened page with no future batch", none_left["游资"]["解禁"]["状态"] == "无")
     starred = board_limit("300001", "*ST示例")

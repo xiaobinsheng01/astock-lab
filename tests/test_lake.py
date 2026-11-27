@@ -7,7 +7,15 @@ import json
 import unittest
 from pathlib import Path
 
-from astock.lake import finish_final, hot_quote_dates, read_bars, write_bars, write_news, write_quote
+from astock.lake import (
+    backfill_ohlc,
+    finish_final,
+    hot_quote_dates,
+    read_bars,
+    write_bars,
+    write_news,
+    write_quote,
+)
 
 
 class HotDateTest(unittest.TestCase):
@@ -109,9 +117,111 @@ class StoreTest(unittest.TestCase):
             self.assertEqual([row["date"] for row in kept], ["2026-11-03", "2026-11-04", "2026-11-05"])
             self.assertEqual(kept[1]["close"], 20)
 
-    def test_read_bars_of_a_missing_code_is_empty(self) -> None:
+    def test_a_close_only_write_does_not_wipe_the_stored_high_and_low(self) -> None:
+        """四路径要读上一交易日的最高最低价，只写收盘的那一次不能把它们抹掉。
+
+        有的写入方只知道收盘价，同一天的整行替换会让高低价凭空消失，四条路径
+        和中点就都算不出来。
+        """
         import tempfile
 
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_bars(root, "000001", [{"date": "2026-11-25", "close": 3476.88, "high": 3500.0, "low": 3450.0}])
+            write_bars(root, "000001", [{"date": "2026-11-25", "close": 3476.88}])
+            kept = read_bars(root, "000001")[0]
+            self.assertEqual(kept["high"], 3500.0)
+            self.assertEqual(kept["low"], 3450.0)
+            self.assertEqual(kept["close"], 3476.88)
+
+    def test_a_newer_value_wins_but_a_missing_key_never_deletes(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_bars(root, "000001", [{"date": "2026-11-25", "close": 100.0, "high": 110.0, "low": 90.0}])
+            write_bars(root, "000001", [{"date": "2026-11-25", "close": 105.0, "high": None}])
+            kept = read_bars(root, "000001")[0]
+            self.assertEqual(kept["close"], 105.0)
+            self.assertEqual(kept["high"], 110.0)
+            self.assertEqual(kept["low"], 90.0)
+
+    def test_ohlc_backfill_fills_high_and_low_into_an_existing_close(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_bars(root, "000001", [{"date": "2026-11-25", "close": 3476.88}])
+            out = backfill_ohlc(
+                root,
+                "000001",
+                {"px": 3476.88, "high": 3500.0, "low": 3450.0, "ts": "20261125150000"},
+            )
+            self.assertEqual(out["date"], "2026-11-25")
+            kept = read_bars(root, "000001")[0]
+            self.assertEqual(kept["high"], 3500.0)
+            self.assertEqual(kept["low"], 3450.0)
+
+    def test_ohlc_backfill_refuses_an_intraday_quote(self) -> None:
+        """盘中最高最低价还没走完，写进去会让四条路径全错。"""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out = backfill_ohlc(
+                root,
+                "000001",
+                {"px": 3475.34, "high": 3487.28, "low": 3467.41, "ts": "20261127105954"},
+            )
+            self.assertEqual(out["status"], "未写")
+            self.assertIn("盘中", out["reason"])
+            self.assertEqual(read_bars(root, "000001"), [])
+
+    def test_ohlc_backfill_accepts_a_closed_quote(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out = backfill_ohlc(
+                root,
+                "000001",
+                {"px": 3476.88, "high": 3500.0, "low": 3450.0, "ts": "20261126150103"},
+            )
+            self.assertEqual(out["status"], "已写")
+            self.assertEqual(read_bars(root, "000001")[0]["high"], 3500.0)
+
+    def test_ohlc_backfill_can_be_told_the_session_closed(self) -> None:
+        """时间戳不准时，显式说明已收盘才写。"""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out = backfill_ohlc(
+                root,
+                "000001",
+                {"px": 3476.88, "high": 3500.0, "low": 3450.0, "ts": "20261126145900"},
+                closed=True,
+            )
+            self.assertEqual(out["status"], "已写")
+
+    def test_ohlc_backfill_refuses_a_quote_without_a_high(self) -> None:
+        """没有最高最低价就不写，不拿收盘价冒充。"""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = backfill_ohlc(Path(tmp), "000001", {"px": 3476.88, "ts": "20261125150000"})
+            self.assertEqual(out["status"], "未写")
+
+    def test_ohlc_backfill_will_not_guess_the_date(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = backfill_ohlc(Path(tmp), "000001", {"px": 1.0, "high": 2.0, "low": 0.5})
+            self.assertEqual(out["status"], "未写")
+            self.assertIn("交易日", out["reason"])
+
+    def test_read_bars_of_a_missing_code_is_empty(self) -> None:
+        import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             self.assertEqual(read_bars(Path(tmp), "999999"), [])
 

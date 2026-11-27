@@ -24,6 +24,7 @@
 | 6 产出 | 收盘五行，或盘中六行 | `rules/06-output.md` | `rules/06-output.md` | 按模式选一种，不混写 |
 | 7 操作令 | 总上限、外盘档、退潮、板块预测、操作句 | `rules/07-operation.md` | `rules/07-operation.md` | 预判和盘中在原产出后附第 15 节一句。不改 W1–W8，不改行为分 |
 | 8 个股画像 | 六块按更新时钟分开：身份、生意与报表、催化库、筹码与交易者、价格结构、情景与失效 | `rules/08-portrait.md` | `rules/08-portrait.md` | 只在点名个股画像时打开。不进 W1–W8，不改硬门 |
+| 9 交易员 | 六个固定格子的 claim，每格带核对条件 | `rules/09-trader.md` | `rules/09-trader.md` | 只在要「交易员怎么看」「出一份 claim」时打开。不改产出格式，不改硬门 |
 
 正文里的「某某节」按下表打开对应文件，读同名标题。
 
@@ -36,7 +37,8 @@
 | 终分、初分、盘中实时、盘中分析、个股行情、定时唤醒 | `rules/05-execution.md` |
 | 收盘五行、盘中六行 | `rules/06-output.md` |
 | 操作令、总上限、外盘档、退潮、强行业、弱行业、主线 | `rules/07-operation.md` |
-| 个股画像、基本面画像 | `rules/08-portrait.md` |
+| 个股画像 | `rules/08-portrait.md` |
+| 交易员出稿、claim | `rules/09-trader.md` |
 
 任何模式先读 `rules/02-rules.md` 的「硬门」。没读完不写结论。
 
@@ -68,6 +70,7 @@
 | 初分 | `05-execution.md` 的「初分」全文；`04-judgment.md` 的「预测」「今日关注」；「缠论」「硬门」；三块 canvas；产出用 `06-output.md` 的五行；`01-data.md` 的「市场资讯」 | `python -m astock.close_inputs`，`python -m astock.info_diff`，`python -m astock.news_desk --day <当天>`。行为分按完整顺序重算。发力个股名单留在次日终分。市场资讯不进 W1–W8 |
 | 盘中实时、快评 | `05-execution.md` 的「盘中实时」；`06-output.md` 的六行；`03-account.md` 的「状态块」 | 不全扫。只重算 W6 与板块只数 |
 | 个股画像 | `rules/08-portrait.md` | `python -m astock.fundamental <代码>`。六块都列出。没有来源的写待收集，没有资料的结论写未填 |
+| 交易员出稿、claim、交易员怎么看 | `rules/09-trader.md`；`04-judgment.md` 的「预测怎么落成能核的记录」 | `python -m astock.close_inputs`，`python -m astock.industry --members 30`，`python -m astock.technique`，再 `python -m astock.trader slots/draft/check`。校验通过才写结论，收盘用 `python -m astock.forecast resolve` |
 
 个股表以 `astock.intraday_screen` 为准：主板前缀、半导体不在电子里重复、现价同时高于 5 日和 10 日。站上两条均线的名字全部列出、前十大两格全部判断，不按只数截断。两格判断只留简单且国有资金新进，这是规则，不是少算。报价用脚本印出的价。带时分的新稿由 `astock.info_diff` 收成一行事实，不把只共用四个字的另一篇稿当成同一事实。评论、转载、没有发布时间的稿仍按「资料面增量」不进权重。
 
